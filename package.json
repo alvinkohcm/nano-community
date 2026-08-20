@@ -191,7 +191,7 @@
     "nib": "^1.2.0",
     "nock": "^13.5.4",
     "percentile": "^1.6.0",
-    "prettier": "3.2.5",
+    "prettier": "3.9.6",
     "react-immutable-proptypes": "^2.2.0",
     "react-snap": "mistakia/react-snap#359df6598700375a79b98746402b819d433366fc",
     "redux-immutable": "^4.0.0",

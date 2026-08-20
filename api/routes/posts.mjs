@@ -39,12 +39,14 @@ router.get('/labels', async (req, res) => {
     }
 
     const inner = db('sources')
-    inner.select(db.raw(
-      `DISTINCT ON (${MAIN_URL_EXPR}) posts.*, sources.score_avg, ` +
-      `${MAIN_URL_EXPR} AS main_url, ` +
-      'sources.title AS source_title, sources.logo_url AS source_logo_url, ' +
-      '(posts.score / sources.score_avg) AS strength'
-    ))
+    inner.select(
+      db.raw(
+        `DISTINCT ON (${MAIN_URL_EXPR}) posts.*, sources.score_avg, ` +
+          `${MAIN_URL_EXPR} AS main_url, ` +
+          'sources.title AS source_title, sources.logo_url AS source_logo_url, ' +
+          '(posts.score / sources.score_avg) AS strength'
+      )
+    )
     inner.join('posts', 'posts.sid', 'sources.id')
     inner.leftJoin('post_labels', 'posts.id', 'post_labels.post_id')
     inner.whereNotNull('posts.text')
@@ -97,15 +99,20 @@ const load_trending_posts = async ({
     '(LOG10(posts.score / sources.score_avg) - ' +
     '((EXTRACT(EPOCH FROM NOW())::INTEGER - posts.created_at) / ?))'
   const inner = db('sources')
-  inner.select(db.raw(
-    `DISTINCT ON (${MAIN_URL_EXPR}) posts.*, sources.score_avg, ` +
-    `${MAIN_URL_EXPR} AS main_url, ` +
-    'sources.title AS source_title, sources.logo_url AS source_logo_url, ' +
-    `${strength_expr} AS strength`,
-    [decay]
-  ))
+  inner.select(
+    db.raw(
+      `DISTINCT ON (${MAIN_URL_EXPR}) posts.*, sources.score_avg, ` +
+        `${MAIN_URL_EXPR} AS main_url, ` +
+        'sources.title AS source_title, sources.logo_url AS source_logo_url, ' +
+        `${strength_expr} AS strength`,
+      [decay]
+    )
+  )
   inner.join('posts', 'posts.sid', 'sources.id')
-  inner.whereRaw('posts.created_at > (EXTRACT(EPOCH FROM NOW())::INTEGER - ?)', age * 60 * 60)
+  inner.whereRaw(
+    'posts.created_at > (EXTRACT(EPOCH FROM NOW())::INTEGER - ?)',
+    age * 60 * 60
+  )
   inner.whereNotNull('posts.text')
   inner.whereNot('posts.text', '')
   inner.where('posts.score', '>', 4)
@@ -161,11 +168,13 @@ router.get('/announcements', async (req, res) => {
     }
 
     const inner = db('sources')
-    inner.select(db.raw(
-      `DISTINCT ON (${MAIN_URL_EXPR}) posts.*, sources.score_avg, ` +
-      `${MAIN_URL_EXPR} AS main_url, ` +
-      'sources.title AS source_title, sources.logo_url AS source_logo_url'
-    ))
+    inner.select(
+      db.raw(
+        `DISTINCT ON (${MAIN_URL_EXPR}) posts.*, sources.score_avg, ` +
+          `${MAIN_URL_EXPR} AS main_url, ` +
+          'sources.title AS source_title, sources.logo_url AS source_logo_url'
+      )
+    )
     inner.join('posts', 'posts.sid', 'sources.id')
     inner.where(function () {
       this.where('posts.pid', 'like', 'discord:844618231553720330:%') // network status
@@ -173,7 +182,10 @@ router.get('/announcements', async (req, res) => {
       this.orWhere('posts.pid', 'like', 'discord:572793415138410517:%') // beta-announcements
       this.orWhere('posts.pid', 'like', 'discord:644987172935565335:%') // rep-announcements
     })
-    inner.whereRaw('posts.created_at > (EXTRACT(EPOCH FROM NOW())::INTEGER - ?)', age * 60 * 60)
+    inner.whereRaw(
+      'posts.created_at > (EXTRACT(EPOCH FROM NOW())::INTEGER - ?)',
+      age * 60 * 60
+    )
     // DISTINCT ON winner per main_url: newest post (created_at DESC).
     inner.orderByRaw(`${MAIN_URL_EXPR}, posts.created_at DESC`)
 
@@ -199,14 +211,19 @@ router.get('/announcements', async (req, res) => {
 
 const load_top_posts = async ({ offset = 0, age = 168, limit = 5 } = {}) => {
   const inner = db('sources')
-  inner.select(db.raw(
-    `DISTINCT ON (${MAIN_URL_EXPR}) posts.*, sources.score_avg, ` +
-    `${MAIN_URL_EXPR} AS main_url, ` +
-    'sources.title AS source_title, sources.logo_url AS source_logo_url, ' +
-    '(posts.score / sources.score_avg) AS strength'
-  ))
+  inner.select(
+    db.raw(
+      `DISTINCT ON (${MAIN_URL_EXPR}) posts.*, sources.score_avg, ` +
+        `${MAIN_URL_EXPR} AS main_url, ` +
+        'sources.title AS source_title, sources.logo_url AS source_logo_url, ' +
+        '(posts.score / sources.score_avg) AS strength'
+    )
+  )
   inner.join('posts', 'posts.sid', 'sources.id')
-  inner.whereRaw('posts.created_at > (EXTRACT(EPOCH FROM NOW())::INTEGER - ?)', age * 60 * 60)
+  inner.whereRaw(
+    'posts.created_at > (EXTRACT(EPOCH FROM NOW())::INTEGER - ?)',
+    age * 60 * 60
+  )
   inner.whereNotNull('posts.text')
   inner.whereNot('posts.text', '')
   inner.whereNot('posts.pid', 'like', 'discord:844618231553720330:%') // network status

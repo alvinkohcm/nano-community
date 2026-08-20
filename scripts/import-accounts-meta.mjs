@@ -72,8 +72,14 @@ const importAccountsMeta = async () => {
 
   if (inserts.length) {
     logger(`saving meta for ${inserts.length} accounts`)
-    await db('accounts_meta').insert(inserts).onConflict(['account', 'timestamp']).merge()
-    await db('accounts_meta_index').insert(inserts).onConflict('account').merge()
+    await db('accounts_meta')
+      .insert(inserts)
+      .onConflict(['account', 'timestamp'])
+      .merge()
+    await db('accounts_meta_index')
+      .insert(inserts)
+      .onConflict('account')
+      .merge()
   }
 }
 

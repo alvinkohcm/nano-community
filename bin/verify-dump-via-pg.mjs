@@ -62,7 +62,8 @@ const HISTORY_TABLES = [
     null_safe: ['account'],
     bogus_filter: '"timestamp" > 0',
     stage: '_stage_telemetry',
-    stage_full_ddl: '(LIKE public.representatives_telemetry INCLUDING DEFAULTS)',
+    stage_full_ddl:
+      '(LIKE public.representatives_telemetry INCLUDING DEFAULTS)',
     stage_cols: TABLE_COLUMNS.representatives_telemetry,
     live_cols: TABLE_COLUMNS.representatives_telemetry,
     stage_alters: [],
@@ -138,7 +139,8 @@ async function antiJoin({ pgClient, cfg, probe }) {
     return Number(r.rows[0].unmatched)
   }
   const onParts = cfg.keys.map((k) => {
-    if (cfg.null_safe.includes(k)) return `l."${k}" IS NOT DISTINCT FROM s."${k}"`
+    if (cfg.null_safe.includes(k))
+      return `l."${k}" IS NOT DISTINCT FROM s."${k}"`
     return `l."${k}" = s."${k}"`
   })
   onParts.push('l."timestamp" BETWEEN $1 AND $2')
@@ -162,7 +164,11 @@ async function yearHistogram({ pgClient, cfg, probe }) {
     )
     return Object.fromEntries(r.rows.map((row) => [row.yr, Number(row.n)]))
   }
-  const onParts = cfg.keys.map((k) => cfg.null_safe.includes(k) ? `l."${k}" IS NOT DISTINCT FROM s."${k}"` : `l."${k}" = s."${k}"`)
+  const onParts = cfg.keys.map((k) =>
+    cfg.null_safe.includes(k)
+      ? `l."${k}" IS NOT DISTINCT FROM s."${k}"`
+      : `l."${k}" = s."${k}"`
+  )
   onParts.push('l."timestamp" BETWEEN $1 AND $2')
   const r = await pgClient.query(
     `SELECT extract(year FROM to_timestamp(s."timestamp"))::int AS yr, count(*)::bigint AS n
@@ -175,10 +181,18 @@ async function yearHistogram({ pgClient, cfg, probe }) {
   return Object.fromEntries(r.rows.map((row) => [row.yr, Number(row.n)]))
 }
 
-async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) {
+async function run({
+  dumpPath,
+  importUnmatched = false,
+  sampleUnmatched = 20
+}) {
   const dumpName = basename(dumpPath)
   const dumpStat = await stat(dumpPath)
-  logger('verify-dump-via-pg: %s (%.1f MB)', dumpName, dumpStat.size / 1024 / 1024)
+  logger(
+    'verify-dump-via-pg: %s (%.1f MB)',
+    dumpName,
+    dumpStat.size / 1024 / 1024
+  )
 
   const ledger = await openLedger('older-dumps-via-pg')
   const pgClient = await createPgClient()
@@ -191,13 +205,17 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
 
   try {
     for (const cfg of HISTORY_TABLES) {
-      await pgClient.query(`CREATE TEMP TABLE ${cfg.stage} ${cfg.stage_full_ddl}`)
-      for (const alter of (cfg.stage_alters || [])) {
+      await pgClient.query(
+        `CREATE TEMP TABLE ${cfg.stage} ${cfg.stage_full_ddl}`
+      )
+      for (const alter of cfg.stage_alters || []) {
         await pgClient.query(`ALTER TABLE ${cfg.stage} ${alter}`)
       }
     }
 
-    const targetTables = Object.fromEntries(HISTORY_TABLES.map((c) => [c.name, c.stage_cols]))
+    const targetTables = Object.fromEntries(
+      HISTORY_TABLES.map((c) => [c.name, c.stage_cols])
+    )
 
     const tParse0 = Date.now()
     await parseMysqlDump({
@@ -220,7 +238,9 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
           stagedRows[table] = stagedRows[table] || 0
         }
         const cfg = activeStream.cfg
-        const ok = activeStream.source.write(tsvLine({ values, cols: cfg.stage_cols }))
+        const ok = activeStream.source.write(
+          tsvLine({ values, cols: cfg.stage_cols })
+        )
         if (!ok) {
           // PassThrough is full; pause via async-stop is overkill here -- the
           // parser is line-buffered and a single line typically fits the HWM.
@@ -229,7 +249,13 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
         stagedRows[table]++
       },
       onProgress: ({ bytesRead, table, rowsByTable, eof }) => {
-        logger('parse progress: bytes=%d table=%s rows=%j%s', bytesRead, table, rowsByTable, eof ? ' EOF' : '')
+        logger(
+          'parse progress: bytes=%d table=%s rows=%j%s',
+          bytesRead,
+          table,
+          rowsByTable,
+          eof ? ' EOF' : ''
+        )
       }
     })
 
@@ -244,7 +270,10 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
 
     for (const cfg of HISTORY_TABLES) {
       if (!stagedRows[cfg.name]) {
-        logger('%s: no rows staged (table absent from dump); skipping', cfg.name)
+        logger(
+          '%s: no rows staged (table absent from dump); skipping',
+          cfg.name
+        )
         await ledger.appendRow({
           file: `dump:${dumpName}#${cfg.name}`,
           table: cfg.live,
@@ -257,13 +286,26 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
       const tProbe0 = Date.now()
       const probe = await rangeProbe({ pgClient, cfg })
       const tProbe = Date.now() - tProbe0
-      logger('%s: probe staged=%s distinct=%s min=%s max=%s bogus=%s (%.1fs)',
-        cfg.name, probe.staged, probe.distinct_keys, probe.min_ts, probe.max_ts, probe.bogus, tProbe / 1000)
+      logger(
+        '%s: probe staged=%s distinct=%s min=%s max=%s bogus=%s (%.1fs)',
+        cfg.name,
+        probe.staged,
+        probe.distinct_keys,
+        probe.min_ts,
+        probe.max_ts,
+        probe.bogus,
+        tProbe / 1000
+      )
 
       const tAj0 = Date.now()
       const unmatched = await antiJoin({ pgClient, cfg, probe })
       const tAj = Date.now() - tAj0
-      logger('%s: anti-join unmatched=%d (%.1fs)', cfg.name, unmatched, tAj / 1000)
+      logger(
+        '%s: anti-join unmatched=%d (%.1fs)',
+        cfg.name,
+        unmatched,
+        tAj / 1000
+      )
 
       let yearHist = null
       let unmatchedSample = null
@@ -273,11 +315,12 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
         logger('%s: unmatched_by_year=%j', cfg.name, yearHist)
 
         if (sampleUnmatched > 0) {
-          const sampleSql = cfg.name === 'posts'
-            ? `SELECT s.url FROM (SELECT DISTINCT url FROM ${cfg.stage} WHERE url IS NOT NULL AND created_at > 1262304000) s
+          const sampleSql =
+            cfg.name === 'posts'
+              ? `SELECT s.url FROM (SELECT DISTINCT url FROM ${cfg.stage} WHERE url IS NOT NULL AND created_at > 1262304000) s
                  WHERE NOT EXISTS (SELECT 1 FROM public.${cfg.live} l WHERE l.url = s.url)
                  LIMIT ${sampleUnmatched}`
-            : `SELECT s.account, s."timestamp" FROM (SELECT DISTINCT ${cfg.keys.map((k) => '"' + k + '"').join(', ')} FROM ${cfg.stage} WHERE "timestamp" > 0) s
+              : `SELECT s.account, s."timestamp" FROM (SELECT DISTINCT ${cfg.keys.map((k) => '"' + k + '"').join(', ')} FROM ${cfg.stage} WHERE "timestamp" > 0) s
                  WHERE NOT EXISTS (SELECT 1 FROM public.${cfg.live} l WHERE ${cfg.keys.map((k) => 'l."' + k + '" = s."' + k + '"').join(' AND ')})
                  LIMIT ${sampleUnmatched}`
           const sr = await pgClient.query(sampleSql)
@@ -287,19 +330,25 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
 
         if (importUnmatched && cfg.importable) {
           await pgClient.query('BEGIN')
-          await pgClient.query('SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0')
+          await pgClient.query(
+            'SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0'
+          )
           const liveColList = cfg.live_cols.map((c) => '"' + c + '"').join(', ')
-          const resolvedSelect = cfg.live_cols.map((c) => {
-            const xform = cfg.select_transforms && cfg.select_transforms[c]
-            if (!xform) return `s."${c}"`
-            // xform is the SQL fragment string (declarative, not a JS fn).
-            return xform
-          }).join(', ')
-          const onPredicate = cfg.keys.map((k) =>
-            cfg.null_safe.includes(k)
-              ? `l."${k}" IS NOT DISTINCT FROM s."${k}"`
-              : `l."${k}" = s."${k}"`
-          ).join(' AND ')
+          const resolvedSelect = cfg.live_cols
+            .map((c) => {
+              const xform = cfg.select_transforms && cfg.select_transforms[c]
+              if (!xform) return `s."${c}"`
+              // xform is the SQL fragment string (declarative, not a JS fn).
+              return xform
+            })
+            .join(', ')
+          const onPredicate = cfg.keys
+            .map((k) =>
+              cfg.null_safe.includes(k)
+                ? `l."${k}" IS NOT DISTINCT FROM s."${k}"`
+                : `l."${k}" = s."${k}"`
+            )
+            .join(' AND ')
           const distinctKeys = cfg.keys.map((k) => `s."${k}"`).join(', ')
           const whereBogus = cfg.bogus_filter ? `s.${cfg.bogus_filter}` : 'TRUE'
           const tIns = Date.now()
@@ -313,15 +362,26 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
           )
           imported = ins.rowCount
           await pgClient.query('COMMIT')
-          logger('%s: import-unmatched inserted=%d (%.1fs)', cfg.name, imported, (Date.now() - tIns) / 1000)
+          logger(
+            '%s: import-unmatched inserted=%d (%.1fs)',
+            cfg.name,
+            imported,
+            (Date.now() - tIns) / 1000
+          )
         } else if (importUnmatched && !cfg.importable) {
-          logger('%s: --import-unmatched skipped (not yet implemented for this table)', cfg.name)
+          logger(
+            '%s: --import-unmatched skipped (not yet implemented for this table)',
+            cfg.name
+          )
         }
       }
 
-      const classification = imported != null
-        ? `partial+imported(${imported})`
-        : (unmatched === 0 ? 'verified-safe' : 'partial')
+      const classification =
+        imported != null
+          ? `partial+imported(${imported})`
+          : unmatched === 0
+            ? 'verified-safe'
+            : 'partial'
       if (unmatched > 0 && imported == null) exit = EXIT_PARTIAL
 
       await ledger.appendRow({
@@ -346,7 +406,9 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
     })
     exit = EXIT_SETUP
   } finally {
-    try { await pgClient.end() } catch {}
+    try {
+      await pgClient.end()
+    } catch {}
   }
 
   return exit
@@ -354,7 +416,11 @@ async function run({ dumpPath, importUnmatched = false, sampleUnmatched = 20 }) 
 
 function startCopySync({ pgClient, cfg }) {
   const colList = cfg.stage_cols.map((c) => `"${c}"`).join(', ')
-  const sink = pgClient.query(pgCopyStreams.from(`COPY ${cfg.stage} (${colList}) FROM STDIN WITH (FORMAT text)`))
+  const sink = pgClient.query(
+    pgCopyStreams.from(
+      `COPY ${cfg.stage} (${colList}) FROM STDIN WITH (FORMAT text)`
+    )
+  )
   const source = new PassThrough({ highWaterMark: 4 * 1024 * 1024 })
   const done = pipeline(source, sink)
   return { source, sink, done, cfg }
@@ -362,13 +428,22 @@ function startCopySync({ pgClient, cfg }) {
 
 if (isMain(import.meta.url)) {
   const argv = yargs(hideBin(process.argv))
-    .option('dump', { type: 'string', describe: 'Path to .sql dump', demandOption: true })
+    .option('dump', {
+      type: 'string',
+      describe: 'Path to .sql dump',
+      demandOption: true
+    })
     .option('import-unmatched', { type: 'boolean', default: false })
     .option('sample-unmatched', { type: 'number', default: 20 })
-    .strict()
-    .argv
-  run({ dumpPath: argv.dump, importUnmatched: argv['import-unmatched'], sampleUnmatched: argv['sample-unmatched'] })
-    .then((c) => { process.exitCode = c })
+    .strict().argv
+  run({
+    dumpPath: argv.dump,
+    importUnmatched: argv['import-unmatched'],
+    sampleUnmatched: argv['sample-unmatched']
+  })
+    .then((c) => {
+      process.exitCode = c
+    })
     .catch((e) => {
       console.error('fatal:', e.stack || e.message)
       process.exitCode = EXIT_SETUP

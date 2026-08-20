@@ -33,10 +33,17 @@ const IN_QUOTED = 3
 const IN_ESCAPE = 4
 const BETWEEN_FIELDS = 5
 
-export async function parseMysqlDump({ dumpPath, targetTables, onRow, onProgress } = {}) {
+export async function parseMysqlDump({
+  dumpPath,
+  targetTables,
+  onRow,
+  onProgress
+} = {}) {
   if (!dumpPath) throw new Error('parseMysqlDump: dumpPath required')
-  if (!targetTables || typeof targetTables !== 'object') throw new Error('parseMysqlDump: targetTables required')
-  if (typeof onRow !== 'function') throw new Error('parseMysqlDump: onRow required')
+  if (!targetTables || typeof targetTables !== 'object')
+    throw new Error('parseMysqlDump: targetTables required')
+  if (typeof onRow !== 'function')
+    throw new Error('parseMysqlDump: onRow required')
 
   const schemas = Object.create(null) // table -> { columns: [], indexByName: {} }
   const rowsByTable = Object.create(null)
@@ -47,14 +54,21 @@ export async function parseMysqlDump({ dumpPath, targetTables, onRow, onProgress
   let nextProgressAt = PROGRESS_BYTES
   let lastProgressTable = null
 
-  const stream = createReadStream(dumpPath, { encoding: 'utf8', highWaterMark: 4 * 1024 * 1024 })
+  const stream = createReadStream(dumpPath, {
+    encoding: 'utf8',
+    highWaterMark: 4 * 1024 * 1024
+  })
   const rl = createInterface({ input: stream, crlfDelay: Infinity })
 
   for await (const line of rl) {
     bytesRead += Buffer.byteLength(line, 'utf8') + 1 // +1 for the consumed newline
 
     if (collectingTable) {
-      if (line.startsWith(') ENGINE=') || line.startsWith(')ENGINE=') || line.startsWith(') /*!')) {
+      if (
+        line.startsWith(') ENGINE=') ||
+        line.startsWith(')ENGINE=') ||
+        line.startsWith(') /*!')
+      ) {
         collectingTable = null
         continue
       }
@@ -83,12 +97,16 @@ export async function parseMysqlDump({ dumpPath, targetTables, onRow, onProgress
       if (!(table in targetTables)) continue
       const schema = schemas[table]
       if (!schema || schema.columns.length === 0) {
-        throw new Error(`parseMysqlDump: INSERT INTO \`${table}\` before its CREATE TABLE block`)
+        throw new Error(
+          `parseMysqlDump: INSERT INTO \`${table}\` before its CREATE TABLE block`
+        )
       }
       const projection = targetTables[table]
       const ordinals = projection.map((col) => {
         if (!(col in schema.indexByName)) {
-          throw new Error(`parseMysqlDump: column \`${col}\` not found in table \`${table}\` (have: ${schema.columns.join(',')})`)
+          throw new Error(
+            `parseMysqlDump: column \`${col}\` not found in table \`${table}\` (have: ${schema.columns.join(',')})`
+          )
         }
         return schema.indexByName[col]
       })
@@ -105,9 +123,11 @@ export async function parseMysqlDump({ dumpPath, targetTables, onRow, onProgress
       rowsByTable[table] += count
 
       if (bytesRead >= nextProgressAt || lastProgressTable !== table) {
-        if (onProgress) onProgress({ bytesRead, table, rowsByTable: { ...rowsByTable } })
+        if (onProgress)
+          onProgress({ bytesRead, table, rowsByTable: { ...rowsByTable } })
         lastProgressTable = table
-        if (bytesRead >= nextProgressAt) nextProgressAt = bytesRead + PROGRESS_BYTES
+        if (bytesRead >= nextProgressAt)
+          nextProgressAt = bytesRead + PROGRESS_BYTES
       }
       continue
     }
@@ -115,7 +135,13 @@ export async function parseMysqlDump({ dumpPath, targetTables, onRow, onProgress
     // skip everything else
   }
 
-  if (onProgress) onProgress({ bytesRead, table: null, rowsByTable: { ...rowsByTable }, eof: true })
+  if (onProgress)
+    onProgress({
+      bytesRead,
+      table: null,
+      rowsByTable: { ...rowsByTable },
+      eof: true
+    })
 
   return { schemas, rowsByTable, bytesRead }
 }
@@ -148,7 +174,15 @@ function matchInsertInto(line) {
   return { table, valuesStart }
 }
 
-function emitTuples({ line, startIdx, ncols, ordinals, projection, table, onRow }) {
+function emitTuples({
+  line,
+  startIdx,
+  ncols,
+  ordinals,
+  projection,
+  table,
+  onRow
+}) {
   let state = BEFORE_TUPLE
   let i = startIdx
   const n = line.length
@@ -162,7 +196,8 @@ function emitTuples({ line, startIdx, ncols, ordinals, projection, table, onRow 
     const ch = line.charCodeAt(i)
 
     if (state === BEFORE_TUPLE) {
-      if (ch === 40) { // '('
+      if (ch === 40) {
+        // '('
         colIdx = 0
         buf = ''
         isQuoted = false
@@ -181,13 +216,15 @@ function emitTuples({ line, startIdx, ncols, ordinals, projection, table, onRow 
     }
 
     if (state === IN_BARE) {
-      if (ch === 44 || ch === 41) { // ',' or ')'
+      if (ch === 44 || ch === 41) {
+        // ',' or ')'
         const val = isQuoted ? buf : interpretBare(buf)
         fields[colIdx++] = val
         if (ch === 41) {
           // End of tuple. Emit.
           const out = Object.create(null)
-          for (let p = 0; p < ordinals.length; p++) out[projection[p]] = fields[ordinals[p]]
+          for (let p = 0; p < ordinals.length; p++)
+            out[projection[p]] = fields[ordinals[p]]
           onRow(table, out)
           emitted++
           state = BETWEEN_FIELDS
@@ -212,12 +249,14 @@ function emitTuples({ line, startIdx, ncols, ordinals, projection, table, onRow 
     }
 
     if (state === IN_QUOTED) {
-      if (ch === 92) { // '\'
+      if (ch === 92) {
+        // '\'
         state = IN_ESCAPE
         i++
         continue
       }
-      if (ch === 39) { // closing single-quote
+      if (ch === 39) {
+        // closing single-quote
         // Closing the quoted string. Switch to expecting , or ).
         const val = buf
         fields[colIdx++] = val
@@ -238,13 +277,16 @@ function emitTuples({ line, startIdx, ncols, ordinals, projection, table, onRow 
             }
           } else if (nc === 41) {
             const out = Object.create(null)
-            for (let p = 0; p < ordinals.length; p++) out[projection[p]] = fields[ordinals[p]]
+            for (let p = 0; p < ordinals.length; p++)
+              out[projection[p]] = fields[ordinals[p]]
             onRow(table, out)
             emitted++
             state = BETWEEN_FIELDS
             i++
           } else {
-            throw new Error(`parseMysqlDump: unexpected char after quoted field in \`${table}\`: ${JSON.stringify(line.slice(Math.max(0, i - 20), i + 20))}`)
+            throw new Error(
+              `parseMysqlDump: unexpected char after quoted field in \`${table}\`: ${JSON.stringify(line.slice(Math.max(0, i - 20), i + 20))}`
+            )
           }
         }
         continue
@@ -262,12 +304,14 @@ function emitTuples({ line, startIdx, ncols, ordinals, projection, table, onRow 
     }
 
     if (state === BETWEEN_FIELDS) {
-      if (ch === 44) { // ',' tuple separator
+      if (ch === 44) {
+        // ',' tuple separator
         state = BEFORE_TUPLE
         i++
         continue
       }
-      if (ch === 59) { // ';' end of INSERT
+      if (ch === 59) {
+        // ';' end of INSERT
         break
       }
       // Skip whitespace.
@@ -286,15 +330,25 @@ function interpretBare(buf) {
 
 function decodeEscape(c) {
   switch (c) {
-    case "'": return "'"
-    case '"': return '"'
-    case '\\': return '\\'
-    case 'n': return '\n'
-    case 'r': return '\r'
-    case 't': return '\t'
-    case 'b': return '\b'
-    case '0': return '\x00'
-    case 'Z': return '\x1a'
-    default: return c
+    case "'":
+      return "'"
+    case '"':
+      return '"'
+    case '\\':
+      return '\\'
+    case 'n':
+      return '\n'
+    case 'r':
+      return '\r'
+    case 't':
+      return '\t'
+    case 'b':
+      return '\b'
+    case '0':
+      return '\x00'
+    case 'Z':
+      return '\x1a'
+    default:
+      return c
   }
 }

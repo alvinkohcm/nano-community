@@ -43,7 +43,10 @@ function emptyLineFilter() {
   let pending = ''
   return new Transform({
     transform(chunk, _enc, cb) {
-      const buf = (pending + chunk.toString('utf8')).split('\u0000').join('').replace(/\r/g, '')
+      const buf = (pending + chunk.toString('utf8'))
+        .split('\u0000')
+        .join('')
+        .replace(/\r/g, '')
       const lines = buf.split('\n')
       pending = lines.pop()
       const out = []
@@ -64,7 +67,9 @@ async function copyOne(client, path) {
   const dialect = await sniffCsvDialect(path)
   for (const c of dialect.header) {
     if (!COLS.includes(c)) {
-      throw new Error(`unknown CSV header column ${c} in ${path}; expected subset of ${COLS.join(',')}`)
+      throw new Error(
+        `unknown CSV header column ${c} in ${path}; expected subset of ${COLS.join(',')}`
+      )
     }
   }
   const colList = dialect.header.map((c) => `"${c}"`).join(', ')
@@ -87,7 +92,9 @@ async function run() {
   let exit = EXIT_SAFE
   try {
     await client.query('BEGIN')
-    await client.query(`CREATE TEMP TABLE _stage (LIKE ${STAGE_LIKE} INCLUDING DEFAULTS) ON COMMIT DROP`)
+    await client.query(
+      `CREATE TEMP TABLE _stage (LIKE ${STAGE_LIKE} INCLUDING DEFAULTS) ON COMMIT DROP`
+    )
 
     let totalRows = 0
     let totalBytes = 0
@@ -100,14 +107,30 @@ async function run() {
       totalBytes += stt.size
       const { rows: n, columnCount } = await copyOne(client, f)
       totalRows += n
-      shapeHistogram.set(columnCount, (shapeHistogram.get(columnCount) || 0) + 1)
+      shapeHistogram.set(
+        columnCount,
+        (shapeHistogram.get(columnCount) || 0) + 1
+      )
       if ((i + 1) % reportEvery === 0 || i === files.length - 1) {
-        logger('COPY progress: %d/%d files, cum %d rows / %.1f MB', i + 1, files.length, totalRows, totalBytes / 1024 / 1024)
+        logger(
+          'COPY progress: %d/%d files, cum %d rows / %.1f MB',
+          i + 1,
+          files.length,
+          totalRows,
+          totalBytes / 1024 / 1024
+        )
       }
     }
     const shapeSummary = JSON.stringify(Object.fromEntries(shapeHistogram))
     const tCopy = Date.now() - t0
-    logger('COPY phase: %d rows from %d files in %.1fs (%.1f MB) shapes=%s', totalRows, files.length, tCopy / 1000, totalBytes / 1024 / 1024, shapeSummary)
+    logger(
+      'COPY phase: %d rows from %d files in %.1fs (%.1f MB) shapes=%s',
+      totalRows,
+      files.length,
+      tCopy / 1000,
+      totalBytes / 1024 / 1024,
+      shapeSummary
+    )
 
     const range = await client.query(
       `SELECT count(*) AS staged, count(DISTINCT (account, "timestamp")) AS staged_distinct,
@@ -116,7 +139,14 @@ async function run() {
          FROM _stage`
     )
     const r = range.rows[0]
-    logger('stage: rows=%s distinct=%s min=%s max=%s bogus=%s', r.staged, r.staged_distinct, r.min_ts, r.max_ts, r.bogus)
+    logger(
+      'stage: rows=%s distinct=%s min=%s max=%s bogus=%s',
+      r.staged,
+      r.staged_distinct,
+      r.min_ts,
+      r.max_ts,
+      r.bogus
+    )
 
     const t1 = Date.now()
     const aj = await client.query(
@@ -138,7 +168,13 @@ async function run() {
       [r.min_ts, r.max_ts]
     )
     const liveInWindow = Number(liveCount.rows[0].n)
-    logger('live %s rows in [%s, %s]: %d', LIVE_TABLE, r.min_ts, r.max_ts, liveInWindow)
+    logger(
+      'live %s rows in [%s, %s]: %d',
+      LIVE_TABLE,
+      r.min_ts,
+      r.max_ts,
+      liveInWindow
+    )
 
     let yearHistogram = null
     if (unmatched > 0) {
@@ -156,8 +192,14 @@ async function run() {
           ORDER BY yr`,
         [r.min_ts, r.max_ts]
       )
-      yearHistogram = Object.fromEntries(hist.rows.map((row) => [row.yr, Number(row.n)]))
-      logger('unmatched by year (%.1fs): %j', (Date.now() - tH) / 1000, yearHistogram)
+      yearHistogram = Object.fromEntries(
+        hist.rows.map((row) => [row.yr, Number(row.n)])
+      )
+      logger(
+        'unmatched by year (%.1fs): %j',
+        (Date.now() - tH) / 1000,
+        yearHistogram
+      )
     }
 
     let classification = unmatched === 0 ? 'verified-safe' : 'partial'
@@ -168,7 +210,9 @@ async function run() {
     if (importMode && unmatched > 0) {
       // representatives_uptime: account NOT NULL on UNIQUE(account, "timestamp")
       // so ON CONFLICT DO NOTHING is tight (no NULLS-DISTINCT loophole).
-      await client.query('SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0')
+      await client.query(
+        'SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0'
+      )
       const colList = COLS.map((c) => `"${c}"`).join(', ')
       const tIns = Date.now()
       const ins = await client.query(
@@ -180,7 +224,11 @@ async function run() {
          ON CONFLICT DO NOTHING`
       )
       imported = ins.rowCount
-      logger('import-unmatched: inserted=%d (%.1fs)', imported, (Date.now() - tIns) / 1000)
+      logger(
+        'import-unmatched: inserted=%d (%.1fs)',
+        imported,
+        (Date.now() - tIns) / 1000
+      )
       await client.query('COMMIT')
       classification = `partial+imported(${imported})`
       exit = imported >= unmatched ? EXIT_SAFE : EXIT_PARTIAL
@@ -205,7 +253,9 @@ async function run() {
     logger('cluster %s: %s (unmatched=%d)', CLUSTER, classification, unmatched)
   } catch (e) {
     logger('error: %s', e.stack || e.message)
-    try { await client.query('ROLLBACK') } catch (_) {}
+    try {
+      await client.query('ROLLBACK')
+    } catch (_) {}
     await ledger.appendRow({
       file: `cluster:${CLUSTER}`,
       table: LIVE_TABLE,
@@ -220,8 +270,12 @@ async function run() {
 }
 
 if (isMain(import.meta.url)) {
-  run().then((c) => { process.exitCode = c }).catch((e) => {
-    console.error('fatal:', e.stack || e.message)
-    process.exitCode = EXIT_SETUP
-  })
+  run()
+    .then((c) => {
+      process.exitCode = c
+    })
+    .catch((e) => {
+      console.error('fatal:', e.stack || e.message)
+      process.exitCode = EXIT_SETUP
+    })
 }

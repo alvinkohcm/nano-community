@@ -48,7 +48,10 @@ function emptyLineFilter() {
   let pending = ''
   return new Transform({
     transform(chunk, _enc, cb) {
-      const buf = (pending + chunk.toString('utf8')).split('\u0000').join('').replace(/\r/g, '')
+      const buf = (pending + chunk.toString('utf8'))
+        .split('\u0000')
+        .join('')
+        .replace(/\r/g, '')
       const lines = buf.split('\n')
       pending = lines.pop()
       const out = []
@@ -75,11 +78,15 @@ async function copyOne(client, path) {
   const dialect = await sniffCsvDialect(path)
   for (const c of dialect.header) {
     if (!COLS.includes(c)) {
-      throw new Error(`unknown CSV header column ${c} in ${path}; expected subset of ${COLS.join(',')}`)
+      throw new Error(
+        `unknown CSV header column ${c} in ${path}; expected subset of ${COLS.join(',')}`
+      )
     }
   }
   const colList = dialect.header.map((c) => `"${c}"`).join(', ')
-  const fnn = FORCE_NOT_NULL_COLS.filter((c) => dialect.header.includes(c)).map((c) => `"${c}"`).join(', ')
+  const fnn = FORCE_NOT_NULL_COLS.filter((c) => dialect.header.includes(c))
+    .map((c) => `"${c}"`)
+    .join(', ')
   const fnnClause = fnn.length > 0 ? `, FORCE_NOT_NULL (${fnn})` : ''
   const sql = `COPY _stage (${colList}) FROM STDIN WITH (FORMAT csv, HEADER true${fnnClause})`
   const ingest = client.query(pgCopyStreams.from(sql))
@@ -100,12 +107,16 @@ async function run() {
   let exit = EXIT_SAFE
   try {
     await client.query('BEGIN')
-    await client.query(`CREATE TEMP TABLE _stage (LIKE ${STAGE_LIKE} INCLUDING DEFAULTS) ON COMMIT DROP`)
+    await client.query(
+      `CREATE TEMP TABLE _stage (LIKE ${STAGE_LIKE} INCLUDING DEFAULTS) ON COMMIT DROP`
+    )
     // CSVs occasionally carry values longer than live posts.author / authorid
     // (varchar(32)). Widen staging so verification can ingest everything; the
     // anti-join is on url only so wider values do not affect classification.
     // --import-unmatched truncates with substring() before INSERT.
-    await client.query('ALTER TABLE _stage ALTER COLUMN author TYPE TEXT, ALTER COLUMN authorid TYPE TEXT')
+    await client.query(
+      'ALTER TABLE _stage ALTER COLUMN author TYPE TEXT, ALTER COLUMN authorid TYPE TEXT'
+    )
 
     let totalRows = 0
     let totalBytes = 0
@@ -116,12 +127,22 @@ async function run() {
       totalBytes += stt.size
       const { rows: n, columnCount } = await copyOne(client, f)
       totalRows += n
-      shapeHistogram.set(columnCount, (shapeHistogram.get(columnCount) || 0) + 1)
+      shapeHistogram.set(
+        columnCount,
+        (shapeHistogram.get(columnCount) || 0) + 1
+      )
       logger('COPY %s -> %d rows (cum %d)', f.split('/').pop(), n, totalRows)
     }
     const shapeSummary = JSON.stringify(Object.fromEntries(shapeHistogram))
     const tCopy = Date.now() - t0
-    logger('COPY phase: %d rows from %d files in %.1fs (%.1f MB) shapes=%s', totalRows, files.length, tCopy / 1000, totalBytes / 1024 / 1024, shapeSummary)
+    logger(
+      'COPY phase: %d rows from %d files in %.1fs (%.1f MB) shapes=%s',
+      totalRows,
+      files.length,
+      tCopy / 1000,
+      totalBytes / 1024 / 1024,
+      shapeSummary
+    )
 
     const range = await client.query(
       `SELECT count(*) AS staged,
@@ -134,7 +155,15 @@ async function run() {
       [POSTS_BOGUS_EPOCH_THRESHOLD]
     )
     const r = range.rows[0]
-    logger('stage: rows=%s urls=%s urls_real=%s min=%s max=%s bogus=%s', r.staged, r.staged_urls, r.staged_urls_real, r.min_ts, r.max_ts, r.bogus)
+    logger(
+      'stage: rows=%s urls=%s urls_real=%s min=%s max=%s bogus=%s',
+      r.staged,
+      r.staged_urls,
+      r.staged_urls_real,
+      r.min_ts,
+      r.max_ts,
+      r.bogus
+    )
 
     const t1 = Date.now()
     const aj = await client.query(
@@ -147,7 +176,9 @@ async function run() {
     const unmatched = Number(aj.rows[0].unmatched)
     logger('anti-join: unmatched=%d (%.1fs)', unmatched, tAj / 1000)
 
-    const liveCount = await client.query(`SELECT count(*) AS n FROM public.${LIVE_TABLE}`)
+    const liveCount = await client.query(
+      `SELECT count(*) AS n FROM public.${LIVE_TABLE}`
+    )
     const liveTotal = Number(liveCount.rows[0].n)
 
     let yearHistogram = null
@@ -162,8 +193,14 @@ async function run() {
            ORDER BY yr`,
         [POSTS_BOGUS_EPOCH_THRESHOLD]
       )
-      yearHistogram = Object.fromEntries(hist.rows.map((row) => [row.yr, Number(row.n)]))
-      logger('unmatched urls by year (%.1fs): %j', (Date.now() - tH) / 1000, yearHistogram)
+      yearHistogram = Object.fromEntries(
+        hist.rows.map((row) => [row.yr, Number(row.n)])
+      )
+      logger(
+        'unmatched urls by year (%.1fs): %j',
+        (Date.now() - tH) / 1000,
+        yearHistogram
+      )
     }
 
     let classification = unmatched === 0 ? 'verified-safe' : 'partial'
@@ -178,7 +215,9 @@ async function run() {
       // Lift TimescaleDB's per-DML decompression cap: ON CONFLICT against the
       // unique indexes on a compressed hypertable will decompress conflicting
       // chunks, and the default 100k tuple cap is exceeded by 8M-row staging.
-      await client.query('SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0')
+      await client.query(
+        'SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0'
+      )
       const colList = COLS.map((c) => `"${c}"`).join(', ')
       const tIns = Date.now()
       const ins = await client.query(
@@ -192,7 +231,11 @@ async function run() {
         [POSTS_BOGUS_EPOCH_THRESHOLD]
       )
       imported = ins.rowCount
-      logger('import-unmatched: inserted=%d (%.1fs)', imported, (Date.now() - tIns) / 1000)
+      logger(
+        'import-unmatched: inserted=%d (%.1fs)',
+        imported,
+        (Date.now() - tIns) / 1000
+      )
       await client.query('COMMIT')
       classification = `partial+imported(${imported})`
       exit = imported >= unmatched ? EXIT_SAFE : EXIT_PARTIAL
@@ -217,7 +260,9 @@ async function run() {
     logger('cluster %s: %s (unmatched=%d)', CLUSTER, classification, unmatched)
   } catch (e) {
     logger('error: %s', e.stack || e.message)
-    try { await client.query('ROLLBACK') } catch (_) {}
+    try {
+      await client.query('ROLLBACK')
+    } catch (_) {}
     await ledger.appendRow({
       file: `cluster:${CLUSTER}`,
       table: LIVE_TABLE,
@@ -232,8 +277,12 @@ async function run() {
 }
 
 if (isMain(import.meta.url)) {
-  run().then((c) => { process.exitCode = c }).catch((e) => {
-    console.error('fatal:', e.stack || e.message)
-    process.exitCode = EXIT_SETUP
-  })
+  run()
+    .then((c) => {
+      process.exitCode = c
+    })
+    .catch((e) => {
+      console.error('fatal:', e.stack || e.message)
+      process.exitCode = EXIT_SETUP
+    })
 }

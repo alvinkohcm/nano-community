@@ -36,7 +36,8 @@ export const EXIT_SETUP = 3
 export const CLUSTER_PATTERNS = {
   'representatives-uptime': /^representatives-uptime-archive_.*\.csv$/,
   'representatives-telemetry': /^representatives-telemetry-archive_.*\.csv$/,
-  'representatives-telemetry-index': /^representatives-telemetry-index-archive_.*\.csv$/,
+  'representatives-telemetry-index':
+    /^representatives-telemetry-index-archive_.*\.csv$/,
   posts: /^posts-archive_.*\.csv$/
 }
 
@@ -45,22 +46,69 @@ export const CLUSTER_PATTERNS = {
 export const TABLE_COLUMNS = {
   representatives_uptime: ['account', 'online', 'timestamp'],
   representatives_telemetry: [
-    'account', 'weight', 'block_count', 'block_behind', 'cemented_count',
-    'cemented_behind', 'account_count', 'unchecked_count', 'bandwidth_cap',
-    'peer_count', 'protocol_version', 'uptime', 'major_version',
-    'minor_version', 'patch_version', 'pre_release_version', 'maker',
-    'node_id', 'address', 'port', 'telemetry_timestamp', 'timestamp'
+    'account',
+    'weight',
+    'block_count',
+    'block_behind',
+    'cemented_count',
+    'cemented_behind',
+    'account_count',
+    'unchecked_count',
+    'bandwidth_cap',
+    'peer_count',
+    'protocol_version',
+    'uptime',
+    'major_version',
+    'minor_version',
+    'patch_version',
+    'pre_release_version',
+    'maker',
+    'node_id',
+    'address',
+    'port',
+    'telemetry_timestamp',
+    'timestamp'
   ],
   representatives_telemetry_index: [
-    'account', 'weight', 'block_count', 'block_behind', 'cemented_count',
-    'cemented_behind', 'account_count', 'unchecked_count', 'bandwidth_cap',
-    'peer_count', 'protocol_version', 'uptime', 'major_version',
-    'minor_version', 'patch_version', 'pre_release_version', 'maker',
-    'node_id', 'address', 'port', 'telemetry_timestamp', 'timestamp'
+    'account',
+    'weight',
+    'block_count',
+    'block_behind',
+    'cemented_count',
+    'cemented_behind',
+    'account_count',
+    'unchecked_count',
+    'bandwidth_cap',
+    'peer_count',
+    'protocol_version',
+    'uptime',
+    'major_version',
+    'minor_version',
+    'patch_version',
+    'pre_release_version',
+    'maker',
+    'node_id',
+    'address',
+    'port',
+    'telemetry_timestamp',
+    'timestamp'
   ],
   posts: [
-    'id', 'pid', 'sid', 'title', 'url', 'content_url', 'author', 'authorid',
-    'text', 'html', 'summary', 'score', 'social_score', 'created_at', 'updated_at'
+    'id',
+    'pid',
+    'sid',
+    'title',
+    'url',
+    'content_url',
+    'author',
+    'authorid',
+    'text',
+    'html',
+    'summary',
+    'score',
+    'social_score',
+    'created_at',
+    'updated_at'
   ]
 }
 
@@ -75,7 +123,9 @@ export const CLUSTER_TARGETS = {
 
 export async function createPgClient() {
   if (!config.archive_postgres || !config.archive_postgres.connection) {
-    throw new Error('config.archive_postgres.connection missing -- check config.production.js')
+    throw new Error(
+      'config.archive_postgres.connection missing -- check config.production.js'
+    )
   }
   const client = new pg.Client(config.archive_postgres.connection)
   await client.connect()
@@ -84,7 +134,9 @@ export async function createPgClient() {
 
 export async function createMysqlReader(connectionOverrides = {}) {
   if (!config.storage_mysql || !config.storage_mysql.connection) {
-    throw new Error('config.storage_mysql.connection missing -- check config.production.js')
+    throw new Error(
+      'config.storage_mysql.connection missing -- check config.production.js'
+    )
   }
   return mysql.createConnection({
     ...config.storage_mysql.connection,
@@ -202,7 +254,10 @@ export async function listClusterFiles(cluster) {
   const re = CLUSTER_PATTERNS[cluster]
   if (!re) throw new Error(`unknown cluster: ${cluster}`)
   const all = await readdir(BACKUPS_ROOT)
-  return all.filter((f) => re.test(f)).map((f) => `${BACKUPS_ROOT}/${f}`).sort()
+  return all
+    .filter((f) => re.test(f))
+    .map((f) => `${BACKUPS_ROOT}/${f}`)
+    .sort()
 }
 
 // Ledger writer: appends Markdown row + JSONL stdout. Schema matches the plan's
@@ -265,13 +320,20 @@ async function safeFirstLine(path) {
 async function cliSelftest(csv) {
   const client = await createPgClient()
   try {
-    const r = await client.query('SELECT current_database() AS db, version() AS version')
+    const r = await client.query(
+      'SELECT current_database() AS db, version() AS version'
+    )
     logger('PG ok: %s @ %s', r.rows[0].db, r.rows[0].version.split(',')[0])
   } finally {
     await client.end()
   }
   const dialect = await sniffCsvDialect(csv)
-  logger('CSV ok: %s (%d cols, %s line endings)', csv, dialect.column_count, dialect.line_ending)
+  logger(
+    'CSV ok: %s (%d cols, %s line endings)',
+    csv,
+    dialect.column_count,
+    dialect.line_ending
+  )
   logger('Header: %s', dialect.header.join(','))
   const sha = await sha256File(csv)
   logger('sha256: %s', sha)
@@ -291,14 +353,29 @@ async function cliValidateCluster(cluster) {
       const d = await sniffCsvDialect(f)
       const key = `${d.column_count}-col`
       shapes.set(key, (shapes.get(key) || 0) + 1)
-      if (cluster === 'representatives-telemetry' || cluster === 'representatives-telemetry-index') {
+      if (
+        cluster === 'representatives-telemetry' ||
+        cluster === 'representatives-telemetry-index'
+      ) {
         if (d.column_count !== 20 && d.column_count !== 21) {
-          anomalous.push({ file: f, column_count: d.column_count, header: d.header })
+          anomalous.push({
+            file: f,
+            column_count: d.column_count,
+            header: d.header
+          })
         }
       } else if (cluster === 'representatives-uptime' && d.column_count !== 3) {
-        anomalous.push({ file: f, column_count: d.column_count, header: d.header })
+        anomalous.push({
+          file: f,
+          column_count: d.column_count,
+          header: d.header
+        })
       } else if (cluster === 'posts' && d.column_count !== 15) {
-        anomalous.push({ file: f, column_count: d.column_count, header: d.header })
+        anomalous.push({
+          file: f,
+          column_count: d.column_count,
+          header: d.header
+        })
       }
     } catch (e) {
       anomalous.push({ file: f, error: e.message })
@@ -312,11 +389,22 @@ async function cliValidateCluster(cluster) {
     rows: files.length,
     column_delta: dist,
     classification: anomalous.length === 0 ? 'shape-ok' : 'shape-anomalous',
-    notes: anomalous.length === 0
-      ? `n=${files.length} ${dist}`
-      : `n=${files.length} ${dist} anomalous=${anomalous.slice(0, 5).map((a) => `${a.file.split('/').pop()}:${a.column_count ?? a.error}`).join(',')}`
+    notes:
+      anomalous.length === 0
+        ? `n=${files.length} ${dist}`
+        : `n=${files.length} ${dist} anomalous=${anomalous
+            .slice(0, 5)
+            .map(
+              (a) => `${a.file.split('/').pop()}:${a.column_count ?? a.error}`
+            )
+            .join(',')}`
   })
-  logger('cluster %s shape distribution: %s (n=%d)', cluster, dist, files.length)
+  logger(
+    'cluster %s shape distribution: %s (n=%d)',
+    cluster,
+    dist,
+    files.length
+  )
   if (anomalous.length > 0) {
     logger('anomalous files (%d): %j', anomalous.length, anomalous.slice(0, 5))
     return EXIT_PARTIAL
@@ -326,10 +414,17 @@ async function cliValidateCluster(cluster) {
 
 if (isMain(import.meta.url)) {
   const argv = yargs(hideBin(process.argv))
-    .option('selftest', { type: 'string', describe: 'Path to a sample CSV; opens PG, sniffs file, pings Discord' })
-    .option('validate-cluster', { type: 'string', describe: 'Cluster name; walks every CSV and reports column-shape distribution', choices: Object.keys(CLUSTER_PATTERNS) })
-    .strict()
-    .argv
+    .option('selftest', {
+      type: 'string',
+      describe: 'Path to a sample CSV; opens PG, sniffs file, pings Discord'
+    })
+    .option('validate-cluster', {
+      type: 'string',
+      describe:
+        'Cluster name; walks every CSV and reports column-shape distribution',
+      choices: Object.keys(CLUSTER_PATTERNS)
+    })
+    .strict().argv
   ;(async () => {
     let code = EXIT_SAFE
     if (argv.selftest) {
@@ -337,7 +432,9 @@ if (isMain(import.meta.url)) {
     } else if (argv['validate-cluster']) {
       code = await cliValidateCluster(argv['validate-cluster'])
     } else {
-      logger('verify-common: library module; pass --selftest <csv> or --validate-cluster <cluster> to run a CLI mode')
+      logger(
+        'verify-common: library module; pass --selftest <csv> or --validate-cluster <cluster> to run a CLI mode'
+      )
       code = EXIT_SETUP
     }
     process.exitCode = code

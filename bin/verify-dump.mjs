@@ -73,11 +73,17 @@ const REFERENCE_TABLES = ['accounts', 'accounts_meta', 'accounts_changelog']
 
 function shell(cmd, args, { stdin = null } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: [stdin ? 'pipe' : 'inherit', 'pipe', 'pipe'] })
+    const child = spawn(cmd, args, {
+      stdio: [stdin ? 'pipe' : 'inherit', 'pipe', 'pipe']
+    })
     let stdout = ''
     let stderr = ''
-    child.stdout.on('data', (d) => { stdout += d.toString() })
-    child.stderr.on('data', (d) => { stderr += d.toString() })
+    child.stdout.on('data', (d) => {
+      stdout += d.toString()
+    })
+    child.stderr.on('data', (d) => {
+      stderr += d.toString()
+    })
     child.on('error', reject)
     child.on('exit', (code) => {
       if (code === 0) resolve({ stdout, stderr })
@@ -108,22 +114,33 @@ async function loadDump(dumpPath) {
     'SET autocommit=1'
   ].join('; ')
   const t0 = Date.now()
-  await shell('bash', ['-c', `mysql --init-command='${initCmd}' ${TMP_DB} < ${dumpPath}`])
+  await shell('bash', [
+    '-c',
+    `mysql --init-command='${initCmd}' ${TMP_DB} < ${dumpPath}`
+  ])
   return Date.now() - t0
 }
 
 async function getMysqlTables(reader) {
-  const [rows] = await reader.query('SELECT table_name FROM information_schema.tables WHERE table_schema = ?', [TMP_DB])
+  const [rows] = await reader.query(
+    'SELECT table_name FROM information_schema.tables WHERE table_schema = ?',
+    [TMP_DB]
+  )
   return rows.map((r) => r.table_name || r.TABLE_NAME)
 }
 
 async function getMysqlColumns(reader, table) {
-  const [rows] = await reader.query('SELECT column_name FROM information_schema.columns WHERE table_schema = ? AND table_name = ? ORDER BY ordinal_position', [TMP_DB, table])
+  const [rows] = await reader.query(
+    'SELECT column_name FROM information_schema.columns WHERE table_schema = ? AND table_name = ? ORDER BY ordinal_position',
+    [TMP_DB, table]
+  )
   return rows.map((r) => r.column_name || r.COLUMN_NAME)
 }
 
 async function tableRowCount(reader, table) {
-  const [rows] = await reader.query(`SELECT count(*) AS n FROM \`${TMP_DB}\`.\`${table}\``)
+  const [rows] = await reader.query(
+    `SELECT count(*) AS n FROM \`${TMP_DB}\`.\`${table}\``
+  )
   return Number(rows[0].n)
 }
 
@@ -136,20 +153,42 @@ function rowToTextLine(row, cols) {
 // Stream rows from MySQL `<TMP_DB>.<table>` projected to `cols` (a subset of
 // the source columns matching PG's TABLE_COLUMNS) into a PG TEMP _stage via
 // pg-copy-streams using TEXT format (consistent with archive-to-postgres.mjs).
-async function streamMysqlToStage({ reader, pgClient, mysqlTable, projection, pgTextCols }) {
+async function streamMysqlToStage({
+  reader,
+  pgClient,
+  mysqlTable,
+  projection,
+  pgTextCols
+}) {
   const colSql = projection.map((c) => `\`${c}\``).join(', ')
-  const stream = reader.connection.query(`SELECT ${colSql} FROM \`${TMP_DB}\`.\`${mysqlTable}\``).stream({ highWaterMark: 50000 })
+  const stream = reader.connection
+    .query(`SELECT ${colSql} FROM \`${TMP_DB}\`.\`${mysqlTable}\``)
+    .stream({ highWaterMark: 50000 })
   const xform = new Transform({
     objectMode: true,
-    transform(row, _enc, cb) { cb(null, rowToTextLine(row, projection)) }
+    transform(row, _enc, cb) {
+      cb(null, rowToTextLine(row, projection))
+    }
   })
   const pgColList = pgTextCols.map((c) => `"${c}"`).join(', ')
-  const ingest = pgClient.query(pgCopyStreams.from(`COPY _stage (${pgColList}) FROM STDIN WITH (FORMAT text)`))
+  const ingest = pgClient.query(
+    pgCopyStreams.from(
+      `COPY _stage (${pgColList}) FROM STDIN WITH (FORMAT text)`
+    )
+  )
   await pipeline(stream, xform, ingest)
   return ingest.rowCount
 }
 
-async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, importMode, ledger }) {
+async function verifyHistoryTable({
+  reader,
+  pgClient,
+  dump,
+  dumpName,
+  table,
+  importMode,
+  ledger
+}) {
   const present = (await getMysqlTables(reader)).includes(table.name)
   if (!present) {
     logger('dump %s: table %s absent; skipping', dumpName, table.name)
@@ -168,7 +207,12 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
   const projection = neededCols.filter((c) => mysqlCols.includes(c))
   const missing = neededCols.filter((c) => !mysqlCols.includes(c))
   if (missing.length > 0) {
-    logger('dump %s table %s: missing required cols %j; skipping verification', dumpName, table.name, missing)
+    logger(
+      'dump %s table %s: missing required cols %j; skipping verification',
+      dumpName,
+      table.name,
+      missing
+    )
     await ledger.appendRow({
       file: `dump:${dumpName}#${table.name}`,
       table: table.live,
@@ -177,26 +221,55 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
     })
     return null
   }
-  logger('dump %s table %s: mysql cols=%d; projecting key cols=%j', dumpName, table.name, mysqlCols.length, projection)
+  logger(
+    'dump %s table %s: mysql cols=%d; projecting key cols=%j',
+    dumpName,
+    table.name,
+    mysqlCols.length,
+    projection
+  )
 
   const srcCount = await tableRowCount(reader, table.name)
-  logger('dump %s table %s: mysql row count = %d', dumpName, table.name, srcCount)
+  logger(
+    'dump %s table %s: mysql row count = %d',
+    dumpName,
+    table.name,
+    srcCount
+  )
 
   // Lightweight typed staging table that holds only the anti-join keys.
   await pgClient.query('BEGIN')
   if (table.live === 'posts') {
-    await pgClient.query('CREATE TEMP TABLE _stage (url varchar(255), created_at integer) ON COMMIT DROP')
+    await pgClient.query(
+      'CREATE TEMP TABLE _stage (url varchar(255), created_at integer) ON COMMIT DROP'
+    )
   } else if (table.live === 'representatives_uptime') {
-    await pgClient.query('CREATE TEMP TABLE _stage (account character(65), "timestamp" integer) ON COMMIT DROP')
+    await pgClient.query(
+      'CREATE TEMP TABLE _stage (account character(65), "timestamp" integer) ON COMMIT DROP'
+    )
   } else {
     // representatives_telemetry: account + node_id + timestamp
-    await pgClient.query('CREATE TEMP TABLE _stage (account character(65), node_id character(65), "timestamp" integer) ON COMMIT DROP')
+    await pgClient.query(
+      'CREATE TEMP TABLE _stage (account character(65), node_id character(65), "timestamp" integer) ON COMMIT DROP'
+    )
   }
 
   const tCopy0 = Date.now()
-  const staged = await streamMysqlToStage({ reader, pgClient, mysqlTable: table.name, projection, pgTextCols: projection })
+  const staged = await streamMysqlToStage({
+    reader,
+    pgClient,
+    mysqlTable: table.name,
+    projection,
+    pgTextCols: projection
+  })
   const tCopy = Date.now() - tCopy0
-  logger('dump %s table %s: streamed %d rows to _stage (%.1fs)', dumpName, table.name, staged, tCopy / 1000)
+  logger(
+    'dump %s table %s: streamed %d rows to _stage (%.1fs)',
+    dumpName,
+    table.name,
+    staged,
+    tCopy / 1000
+  )
 
   // Range probe.
   let r
@@ -219,7 +292,16 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
     )
     r = range.rows[0]
   }
-  logger('dump %s table %s: stage rows=%s distinct=%s min=%s max=%s bogus=%s', dumpName, table.name, r.staged, r.distinct_keys, r.min_ts, r.max_ts, r.bogus)
+  logger(
+    'dump %s table %s: stage rows=%s distinct=%s min=%s max=%s bogus=%s',
+    dumpName,
+    table.name,
+    r.staged,
+    r.distinct_keys,
+    r.min_ts,
+    r.max_ts,
+    r.bogus
+  )
 
   // Anti-join.
   const tAj0 = Date.now()
@@ -233,7 +315,8 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
     unmatched = Number(aj.rows[0].unmatched)
   } else {
     const onParts = table.keys.map((k) => {
-      if (table.null_safe.includes(k)) return `l.${k} IS NOT DISTINCT FROM s.${k}`
+      if (table.null_safe.includes(k))
+        return `l.${k} IS NOT DISTINCT FROM s.${k}`
       return `l.${k} = s.${k}`
     })
     onParts.push('l."timestamp" BETWEEN $1 AND $2')
@@ -247,7 +330,13 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
     unmatched = Number(aj.rows[0].unmatched)
   }
   const tAj = Date.now() - tAj0
-  logger('dump %s table %s: anti-join unmatched=%d (%.1fs)', dumpName, table.name, unmatched, tAj / 1000)
+  logger(
+    'dump %s table %s: anti-join unmatched=%d (%.1fs)',
+    dumpName,
+    table.name,
+    unmatched,
+    tAj / 1000
+  )
 
   let yearHistogram = null
   if (unmatched > 0) {
@@ -258,9 +347,15 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
            WHERE NOT EXISTS (SELECT 1 FROM public.${table.live} l WHERE l.url = s.url)
            GROUP BY yr ORDER BY yr`
       )
-      yearHistogram = Object.fromEntries(hist.rows.map((row) => [row.yr, Number(row.n)]))
+      yearHistogram = Object.fromEntries(
+        hist.rows.map((row) => [row.yr, Number(row.n)])
+      )
     } else {
-      const onParts = table.keys.map((k) => table.null_safe.includes(k) ? `l.${k} IS NOT DISTINCT FROM s.${k}` : `l.${k} = s.${k}`)
+      const onParts = table.keys.map((k) =>
+        table.null_safe.includes(k)
+          ? `l.${k} IS NOT DISTINCT FROM s.${k}`
+          : `l.${k} = s.${k}`
+      )
       onParts.push('l."timestamp" BETWEEN $1 AND $2')
       const hist = await pgClient.query(
         `SELECT extract(year FROM to_timestamp(s."timestamp"))::int AS yr, count(*)::bigint AS n
@@ -270,9 +365,16 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
           GROUP BY yr ORDER BY yr`,
         [r.min_ts, r.max_ts]
       )
-      yearHistogram = Object.fromEntries(hist.rows.map((row) => [row.yr, Number(row.n)]))
+      yearHistogram = Object.fromEntries(
+        hist.rows.map((row) => [row.yr, Number(row.n)])
+      )
     }
-    logger('dump %s table %s: unmatched_by_year=%j', dumpName, table.name, yearHistogram)
+    logger(
+      'dump %s table %s: unmatched_by_year=%j',
+      dumpName,
+      table.name,
+      yearHistogram
+    )
   }
 
   let classification = unmatched === 0 ? 'verified-safe' : 'partial'
@@ -290,17 +392,32 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
           AND NOT EXISTS (SELECT 1 FROM public.${table.live} l WHERE l.url = s.url)`
     )
     const unmatchedUrls = um.rows.map((row) => row.url)
-    logger('dump %s table %s: importing %d unmatched urls', dumpName, table.name, unmatchedUrls.length)
+    logger(
+      'dump %s table %s: importing %d unmatched urls',
+      dumpName,
+      table.name,
+      unmatchedUrls.length
+    )
 
     const pgPostsCols = TABLE_COLUMNS.posts
     const fullProjection = pgPostsCols.filter((c) => mysqlCols.includes(c))
     const missingFull = pgPostsCols.filter((c) => !mysqlCols.includes(c))
-    logger('dump %s table %s: full-row projection cols=%d missing=%j', dumpName, table.name, fullProjection.length, missingFull)
+    logger(
+      'dump %s table %s: full-row projection cols=%d missing=%j',
+      dumpName,
+      table.name,
+      fullProjection.length,
+      missingFull
+    )
 
-    await pgClient.query(`CREATE TEMP TABLE _stage_full (LIKE public.${table.live} INCLUDING DEFAULTS) ON COMMIT DROP`)
+    await pgClient.query(
+      `CREATE TEMP TABLE _stage_full (LIKE public.${table.live} INCLUDING DEFAULTS) ON COMMIT DROP`
+    )
     // author/authorid: dump may carry longer than live varchar(32) -> TEXT, substring on INSERT.
     // social_score: dump stores decimal(7,1) but live is integer -> TEXT, floor-cast on INSERT.
-    await pgClient.query('ALTER TABLE _stage_full ALTER COLUMN author TYPE TEXT, ALTER COLUMN authorid TYPE TEXT, ALTER COLUMN social_score TYPE TEXT')
+    await pgClient.query(
+      'ALTER TABLE _stage_full ALTER COLUMN author TYPE TEXT, ALTER COLUMN authorid TYPE TEXT, ALTER COLUMN social_score TYPE TEXT'
+    )
 
     // Fetch from MySQL in batches to keep IN-list manageable.
     const BATCH = 500
@@ -309,29 +426,48 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
       const batch = unmatchedUrls.slice(i, i + BATCH)
       const colSql = fullProjection.map((c) => `\`${c}\``).join(', ')
       const stream = reader.connection
-        .query(`SELECT ${colSql} FROM \`${TMP_DB}\`.\`${table.name}\` WHERE \`url\` IN (?)`, [batch])
+        .query(
+          `SELECT ${colSql} FROM \`${TMP_DB}\`.\`${table.name}\` WHERE \`url\` IN (?)`,
+          [batch]
+        )
         .stream({ highWaterMark: 1000 })
       const xform = new Transform({
         objectMode: true,
-        transform(row, _enc, cb) { cb(null, rowToTextLine(row, fullProjection)) }
+        transform(row, _enc, cb) {
+          cb(null, rowToTextLine(row, fullProjection))
+        }
       })
       const pgColList = fullProjection.map((c) => `"${c}"`).join(', ')
-      const ingest = pgClient.query(pgCopyStreams.from(`COPY _stage_full (${pgColList}) FROM STDIN WITH (FORMAT text)`))
+      const ingest = pgClient.query(
+        pgCopyStreams.from(
+          `COPY _stage_full (${pgColList}) FROM STDIN WITH (FORMAT text)`
+        )
+      )
       await pipeline(stream, xform, ingest)
       staged_full += ingest.rowCount
     }
-    logger('dump %s table %s: staged %d full rows for import', dumpName, table.name, staged_full)
+    logger(
+      'dump %s table %s: staged %d full rows for import',
+      dumpName,
+      table.name,
+      staged_full
+    )
 
     // Lift Timescale per-DML decompression cap (matches verify-posts).
-    await pgClient.query('SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0')
+    await pgClient.query(
+      'SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0'
+    )
 
     const insertColList = pgPostsCols.map((c) => `"${c}"`).join(', ')
-    const selectCols = pgPostsCols.map((c) => {
-      if (!fullProjection.includes(c)) return 'NULL'
-      if (c === 'author' || c === 'authorid') return `substring(s."${c}" FROM 1 FOR 32)`
-      if (c === 'social_score') return `floor(s."${c}"::numeric)::integer`
-      return `s."${c}"`
-    }).join(', ')
+    const selectCols = pgPostsCols
+      .map((c) => {
+        if (!fullProjection.includes(c)) return 'NULL'
+        if (c === 'author' || c === 'authorid')
+          return `substring(s."${c}" FROM 1 FOR 32)`
+        if (c === 'social_score') return `floor(s."${c}"::numeric)::integer`
+        return `s."${c}"`
+      })
+      .join(', ')
     const tIns = Date.now()
     const ins = await pgClient.query(
       `INSERT INTO public.${table.live} (${insertColList})
@@ -343,11 +479,21 @@ async function verifyHistoryTable({ reader, pgClient, dump, dumpName, table, imp
        ON CONFLICT DO NOTHING`
     )
     imported = ins.rowCount
-    logger('dump %s table %s: import-unmatched inserted=%d (%.1fs)', dumpName, table.name, imported, (Date.now() - tIns) / 1000)
+    logger(
+      'dump %s table %s: import-unmatched inserted=%d (%.1fs)',
+      dumpName,
+      table.name,
+      imported,
+      (Date.now() - tIns) / 1000
+    )
     await pgClient.query('COMMIT')
     classification = `partial+imported(${imported})`
   } else if (importMode && unmatched > 0) {
-    logger('dump %s table %s: --import-unmatched skipped (only posts implemented in dump branch)', dumpName, table.name)
+    logger(
+      'dump %s table %s: --import-unmatched skipped (only posts implemented in dump branch)',
+      dumpName,
+      table.name
+    )
     await pgClient.query('ROLLBACK')
   } else {
     await pgClient.query('ROLLBACK')
@@ -397,7 +543,9 @@ async function run({ dumpPath, importMode, keepMysql }) {
   const ledger = await openLedger('older-dumps')
 
   // Setup transient MySQL DB.
-  await mysqlAdmin(`DROP DATABASE IF EXISTS ${TMP_DB}; CREATE DATABASE ${TMP_DB} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`)
+  await mysqlAdmin(
+    `DROP DATABASE IF EXISTS ${TMP_DB}; CREATE DATABASE ${TMP_DB} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`
+  )
   logger('created MySQL DB %s', TMP_DB)
   const tLoad = await loadDump(dumpPath)
   logger('loaded %s in %.1fs', dumpName, tLoad / 1000)
@@ -415,7 +563,15 @@ async function run({ dumpPath, importMode, keepMysql }) {
   let exit = EXIT_SAFE
   try {
     for (const table of HISTORY_TABLES) {
-      const v = await verifyHistoryTable({ reader, pgClient, dump: dumpPath, dumpName, table, importMode, ledger })
+      const v = await verifyHistoryTable({
+        reader,
+        pgClient,
+        dump: dumpPath,
+        dumpName,
+        table,
+        importMode,
+        ledger
+      })
       if (v) {
         verdicts.push({ table: table.name, ...v })
         if (v.unmatched > 0 && !importMode) exit = EXIT_PARTIAL
@@ -450,13 +606,26 @@ async function run({ dumpPath, importMode, keepMysql }) {
 
 if (isMain(import.meta.url)) {
   const argv = yargs(hideBin(process.argv))
-    .option('dump', { type: 'string', describe: 'Path to .sql dump', demandOption: true })
+    .option('dump', {
+      type: 'string',
+      describe: 'Path to .sql dump',
+      demandOption: true
+    })
     .option('import-unmatched', { type: 'boolean', default: false })
-    .option('keep-mysql', { type: 'boolean', default: false, describe: 'Skip DROP DATABASE at end (debugging)' })
-    .strict()
-    .argv
-  run({ dumpPath: argv.dump, importMode: argv['import-unmatched'], keepMysql: argv['keep-mysql'] })
-    .then((c) => { process.exitCode = c })
+    .option('keep-mysql', {
+      type: 'boolean',
+      default: false,
+      describe: 'Skip DROP DATABASE at end (debugging)'
+    })
+    .strict().argv
+  run({
+    dumpPath: argv.dump,
+    importMode: argv['import-unmatched'],
+    keepMysql: argv['keep-mysql']
+  })
+    .then((c) => {
+      process.exitCode = c
+    })
     .catch((e) => {
       console.error('fatal:', e.stack || e.message)
       process.exitCode = EXIT_SETUP

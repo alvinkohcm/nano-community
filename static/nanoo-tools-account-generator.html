@@ -650,7 +650,7 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
         255 > g;
         ++g
       )
-        p.push(w), (m[w] = g), (w = (2 * w) ^ (128 > w ? 0 : 285))
+        (p.push(w), (m[w] = g), (w = (2 * w) ^ (128 > w ? 0 : 285)))
       for (var x = [[]], F = 0; 30 > F; ++F) {
         for (var b = x[F], C = [], y = 0; F >= y; ++y) {
           var M = F > y ? p[b[y]] : 0,
@@ -771,9 +771,9 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
             v = f[t],
             h = function (r, t) {
               if (t >= s) {
-                for (c.push(l | (r >> (t -= s))); t >= 8; )
+                for (c.push(l | (r >> (t -= s))); t >= 8;)
                   c.push((r >> (t -= 8)) & 255)
-                ;(l = 0), (s = 8)
+                ;((l = 0), (s = 8))
               }
               t > 0 && (l |= (r & ((1 << t) - 1)) << (s -= t))
             },
@@ -792,13 +792,13 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
             case u:
               for (var g = 0; v > g; ++g) h(f[g], 8)
           }
-          for (h(n, 4), 8 > s && c.push(l); c[t] + 1 < i; ) c.push(236, 17)
-          return c[t] < i && c.push(236), c
+          for (h(n, 4), 8 > s && c.push(l); c[t] + 1 < i;) c.push(236, 17)
+          return (c[t] < i && c.push(236), c)
         },
         H = function (r, e) {
           for (var n = r.slice(0), a = r[t], o = e[t], u = 0; o > u; ++u)
             n.push(0)
-          for (var f = 0; a > f; ) {
+          for (var f = 0; a > f;) {
             var i = m[n[f++]]
             if (i >= 0)
               for (var c = 0; o > c; ++c) n[f + c] ^= p[(i + e[c]) % 255]
@@ -811,8 +811,8 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
             f > i;
             ++i
           )
-            a.push(u), (u += o)
-          for (var c = f; e > c; ++c) a.push(u), (u += o + 1)
+            (a.push(u), (u += o))
+          for (var c = f; e > c; ++c) (a.push(u), (u += o + 1))
           a.push(u)
           for (var l = [], s = 0; e > s; ++s)
             l.push(H(r.slice(a[s], a[s + 1]), n))
@@ -830,17 +830,17 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
         },
         Q = function (r) {
           for (var n = e[r], a = S(r), o = [], u = [], f = 0; a > f; ++f)
-            o.push([]), u.push([])
+            (o.push([]), u.push([]))
           var i = function (r, t, e, n, a) {
             for (var f = 0; e > f; ++f)
               for (var i = 0; n > i; ++i)
-                (o[r + f][t + i] = (a[f] >> i) & 1), (u[r + f][t + i] = 1)
+                ((o[r + f][t + i] = (a[f] >> i) & 1), (u[r + f][t + i] = 1))
           }
-          i(0, 0, 9, 9, [127, 65, 93, 93, 93, 65, 383, 0, 64]),
+          ;(i(0, 0, 9, 9, [127, 65, 93, 93, 93, 65, 383, 0, 64]),
             i(a - 8, 0, 8, 9, [256, 127, 65, 93, 93, 93, 65, 127]),
-            i(0, a - 8, 9, 8, [254, 130, 186, 186, 186, 130, 254, 0, 0])
+            i(0, a - 8, 9, 8, [254, 130, 186, 186, 186, 130, 254, 0, 0]))
           for (var c = 9; a - 8 > c; ++c)
-            (o[6][c] = o[c][6] = 1 & ~c), (u[6][c] = u[c][6] = 1)
+            ((o[6][c] = o[c][6] = 1 & ~c), (u[6][c] = u[c][6] = 1))
           for (var l = n[2], s = l[t], v = 0; s > v; ++v)
             for (
               var h = 0 === v || v === s - 1 ? 1 : 0,
@@ -853,8 +853,8 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
           if (R(r))
             for (var m = P(r, 6, 7973, 12), g = 0, w = 0; 6 > w; ++w)
               for (var x = 0; 3 > x; ++x)
-                (o[w][a - 11 + x] = o[a - 11 + x][w] = (m >> g++) & 1),
-                  (u[w][a - 11 + x] = u[a - 11 + x][w] = 1)
+                ((o[w][a - 11 + x] = o[a - 11 + x][w] = (m >> g++) & 1),
+                  (u[w][a - 11 + x] = u[a - 11 + x][w] = 1))
           return { matrix: o, reserved: u }
         },
         T = function (r, e, n) {
@@ -948,14 +948,14 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
             var s,
               v = r[l]
             s = [0]
-            for (var h = 0; f > h; ) {
+            for (var h = 0; f > h;) {
               var d
               for (d = 0; f > h && v[h]; ++d) ++h
               for (s.push(d), d = 0; f > h && !v[h]; ++d) ++h
               s.push(d)
             }
-            ;(i += u(s)), (s = [0])
-            for (var p = 0; f > p; ) {
+            ;((i += u(s)), (s = [0]))
+            for (var p = 0; f > p;) {
               var m
               for (m = 0; f > p && r[p][l]; ++m) ++p
               for (s.push(m), m = 0; f > p && !r[p][l]; ++m) ++p
@@ -966,8 +966,8 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
             c += v[0]
             for (var w = 1; f > w; ++w) {
               var x = v[w]
-              ;(c += x),
-                v[w - 1] === x && g[w] === x && g[w - 1] === x && (i += n)
+              ;((c += x),
+                v[w - 1] === x && g[w] === x && g[w - 1] === x && (i += n))
             }
           }
           return (i += o * ((Math.abs(c / f / f - 0.5) / 0.05) | 0))
@@ -980,17 +980,17 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
             c = i.matrix,
             l = i.reserved
           if ((T(c, l, f), 0 > o)) {
-            Z(c, l, 0), q(c, l, a, 0)
+            ;(Z(c, l, 0), q(c, l, a, 0))
             var s = 0,
               v = B(c)
             for (Z(c, l, 0), o = 1; 8 > o; ++o) {
-              Z(c, l, o), q(c, l, a, o)
+              ;(Z(c, l, o), q(c, l, a, o))
               var h = B(c)
-              v > h && ((v = h), (s = o)), Z(c, l, o)
+              ;(v > h && ((v = h), (s = o)), Z(c, l, o))
             }
             o = s
           }
-          return Z(c, l, o), q(c, l, a, o), c
+          return (Z(c, l, o), q(c, l, a, o), c)
         },
         j = 'appendChild',
         J = 'createElement',
@@ -1064,7 +1064,7 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
             var d = document[W]()
             d[X](c)
             var p = d[Y](s.join('') + '</table>')
-            return c[j](p), c
+            return (c[j](p), c)
           },
           generateSVG: function (r, e) {
             var n = e || {},
@@ -1076,18 +1076,18 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
               c = Math.max(n.margin ? n.margin : 4, 0),
               l = i * (f + 2 * c),
               s = document[K]('http://www.w3.org/2000/svg', 'svg')
-            s[O](null, 'viewBox', '0 0 ' + l + ' ' + l),
-              s[O](null, 'style', 'shape-rendering:crispEdges')
+            ;(s[O](null, 'viewBox', '0 0 ' + l + ' ' + l),
+              s[O](null, 'style', 'shape-rendering:crispEdges'))
             var v = 'qrcode' + Date.now()
             s[O](null, 'id', v)
             var h = document[_](),
               d = document[K]('http://www.w3.org/2000/svg', 'style')
-            d[j](
+            ;(d[j](
               document[rt](
                 '#' + v + ' .bg{fill:' + a + '}#' + v + ' .fg{fill:' + o + '}'
               )
             ),
-              h[j](d)
+              h[j](d))
             var p = function (r, t, e, n, a) {
               var o = document[K]('http://www.w3.org/2000/svg', 'rect') || ''
               return (
@@ -1103,10 +1103,10 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
             h[j](p('bg', 'none', 0, 0, l))
             for (var m = c * i, g = 0; f > g; ++g) {
               for (var w = c * i, x = 0; f > x; ++x)
-                u[g][x] && h[j](p('fg', 'none', w, m, i)), (w += i)
+                (u[g][x] && h[j](p('fg', 'none', w, m, i)), (w += i))
               m += i
             }
-            return s[j](h), s
+            return (s[j](h), s)
           },
           generatePNG: function (r, e) {
             var n,
@@ -1124,7 +1124,7 @@ a[href^="https://nanoo.tools"]:not([href*="]):after{
               v = document[J]('canvas')
             if (((v.width = v.height = s), (n = v.getContext('2d')), !n))
               throw 'canvas support is needed for PNG output'
-            ;(n.fillStyle = o), n.fillRect(0, 0, s, s), (n.fillStyle = u)
+            ;((n.fillStyle = o), n.fillRect(0, 0, s, s), (n.fillStyle = u))
             for (var h = 0; l > h; ++h)
               for (var d = 0; l > d; ++d)
                 f[h][d] && n.fillRect(i * (c + d), i * (c + h), i, i)
@@ -3356,7 +3356,10 @@ var nanoBase32 = require('nano-base32')
           href="#"
           role="button"
           id="generate"
-          onclick="generateall(); return false;"
+          onclick="
+            generateall()
+            return false
+          "
           >generate paperwallets</a
         >
 
@@ -3400,7 +3403,10 @@ var nanoBase32 = require('nano-base32')
       href="#"
       role="button"
       id="print"
-      onclick="window.print(); return false;"
+      onclick="
+        window.print()
+        return false
+      "
       style="visibility: hidden"
       >Print the paperwallets</a
     >

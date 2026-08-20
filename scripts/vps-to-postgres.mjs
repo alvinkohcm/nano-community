@@ -78,83 +78,295 @@ const RUN_ORDER = [
 // "interval", "references", "countryCode", etc.) are still listed
 // bare here; quoting is applied at SELECT/COPY time.
 const TABLE_COLUMNS = {
-  accounts: ['account', 'alias', 'monitor_url', 'watt_hour', 'representative', 'last_seen'],
-  accounts_changelog: ['account', 'column', 'previous_value', 'new_value', 'timestamp'],
-  account_keys: ['account', 'public_key', 'link_signature', 'revoke_signature', 'created_at', 'revoked_at'],
+  accounts: [
+    'account',
+    'alias',
+    'monitor_url',
+    'watt_hour',
+    'representative',
+    'last_seen'
+  ],
+  accounts_changelog: [
+    'account',
+    'column',
+    'previous_value',
+    'new_value',
+    'timestamp'
+  ],
+  account_keys: [
+    'account',
+    'public_key',
+    'link_signature',
+    'revoke_signature',
+    'created_at',
+    'revoked_at'
+  ],
   accounts_delegators: ['account', 'representative', 'balance', 'timestamp'],
-  accounts_meta: ['account', 'balance', 'block_count', 'weight', 'delegators', 'timestamp'],
-  accounts_meta_index: ['account', 'balance', 'block_count', 'weight', 'delegators', 'timestamp'],
+  accounts_meta: [
+    'account',
+    'balance',
+    'block_count',
+    'weight',
+    'delegators',
+    'timestamp'
+  ],
+  accounts_meta_index: [
+    'account',
+    'balance',
+    'block_count',
+    'weight',
+    'delegators',
+    'timestamp'
+  ],
   accounts_tags: ['account', 'tag'],
   github_discussions: [
-    'id', 'author_id', 'author_name', 'author_avatar', 'ref', 'title', 'url', 'repo',
-    'body', 'upvotes', 'category_name', 'closed', 'state_reason', 'category_id',
-    'created_at', 'updated_at', 'closed_at'
+    'id',
+    'author_id',
+    'author_name',
+    'author_avatar',
+    'ref',
+    'title',
+    'url',
+    'repo',
+    'body',
+    'upvotes',
+    'category_name',
+    'closed',
+    'state_reason',
+    'category_id',
+    'created_at',
+    'updated_at',
+    'closed_at'
   ],
-  github_discussion_labels: ['discussion_id', 'label_id', 'label_name', 'label_color'],
+  github_discussion_labels: [
+    'discussion_id',
+    'label_id',
+    'label_name',
+    'label_color'
+  ],
   github_events: [
-    'id', 'type', 'actor_id', 'actor_name', 'actor_avatar', 'action', 'ref', 'title',
-    'body', 'event_url', 'created_at'
+    'id',
+    'type',
+    'actor_id',
+    'actor_name',
+    'actor_avatar',
+    'action',
+    'ref',
+    'title',
+    'body',
+    'event_url',
+    'created_at'
   ],
   github_issues: [
-    'id', 'state', 'actor_id', 'actor_name', 'actor_avatar', 'assignee_id',
-    'assignee_name', 'assignee_avatar', 'ref', 'title', 'url', 'repo', 'body',
-    'created_at', 'updated_at'
+    'id',
+    'state',
+    'actor_id',
+    'actor_name',
+    'actor_avatar',
+    'assignee_id',
+    'assignee_name',
+    'assignee_avatar',
+    'ref',
+    'title',
+    'url',
+    'repo',
+    'body',
+    'created_at',
+    'updated_at'
   ],
   github_issue_labels: ['issue_id', 'label_id', 'label_name', 'label_color'],
   nano_community_messages: [
-    'version', 'entry_id', 'chain_id', 'entry_clock', 'chain_clock', 'public_key',
-    'operation', 'content', 'tags', 'references', 'created_at', 'signature'
+    'version',
+    'entry_id',
+    'chain_id',
+    'entry_clock',
+    'chain_clock',
+    'public_key',
+    'operation',
+    'content',
+    'tags',
+    'references',
+    'created_at',
+    'signature'
   ],
   posts: [
-    'id', 'pid', 'sid', 'title', 'url', 'content_url', 'author', 'authorid', 'text',
-    'html', 'summary', 'score', 'social_score', 'created_at', 'updated_at'
+    'id',
+    'pid',
+    'sid',
+    'title',
+    'url',
+    'content_url',
+    'author',
+    'authorid',
+    'text',
+    'html',
+    'summary',
+    'score',
+    'social_score',
+    'created_at',
+    'updated_at'
   ],
   post_labels: ['post_id', 'label', 'account_id'],
   representatives_meta_index: [
-    'account', 'cpu_cores', 'cpu_description', 'cpu_model', 'bandwidth_description',
-    'ram', 'ram_description', 'donation_address', 'description', 'dedicated', 'type',
-    'provider', 'created_at', 'mynano_ninja', 'ninja_ram_description',
-    'ninja_cpu_description', 'ninja_description', 'ninja_type', 'ninja_created_at',
-    'ninja_provider', 'reddit', 'twitter', 'discord', 'github', 'website', 'email',
-    'nano_node_monitor_url', 'timestamp'
+    'account',
+    'cpu_cores',
+    'cpu_description',
+    'cpu_model',
+    'bandwidth_description',
+    'ram',
+    'ram_description',
+    'donation_address',
+    'description',
+    'dedicated',
+    'type',
+    'provider',
+    'created_at',
+    'mynano_ninja',
+    'ninja_ram_description',
+    'ninja_cpu_description',
+    'ninja_description',
+    'ninja_type',
+    'ninja_created_at',
+    'ninja_provider',
+    'reddit',
+    'twitter',
+    'discord',
+    'github',
+    'website',
+    'email',
+    'nano_node_monitor_url',
+    'timestamp'
   ],
-  representatives_meta_index_changelog: ['account', 'column', 'previous_value', 'new_value', 'timestamp'],
+  representatives_meta_index_changelog: [
+    'account',
+    'column',
+    'previous_value',
+    'new_value',
+    'timestamp'
+  ],
   representatives_telemetry: [
-    'account', 'weight', 'block_count', 'block_behind', 'cemented_count',
-    'cemented_behind', 'account_count', 'unchecked_count', 'bandwidth_cap',
-    'peer_count', 'protocol_version', 'uptime', 'major_version', 'minor_version',
-    'patch_version', 'pre_release_version', 'maker', 'node_id', 'address', 'port',
-    'telemetry_timestamp', 'timestamp'
+    'account',
+    'weight',
+    'block_count',
+    'block_behind',
+    'cemented_count',
+    'cemented_behind',
+    'account_count',
+    'unchecked_count',
+    'bandwidth_cap',
+    'peer_count',
+    'protocol_version',
+    'uptime',
+    'major_version',
+    'minor_version',
+    'patch_version',
+    'pre_release_version',
+    'maker',
+    'node_id',
+    'address',
+    'port',
+    'telemetry_timestamp',
+    'timestamp'
   ],
   representatives_telemetry_index: [
-    'account', 'weight', 'block_count', 'block_behind', 'cemented_count',
-    'cemented_behind', 'account_count', 'unchecked_count', 'bandwidth_cap',
-    'peer_count', 'protocol_version', 'uptime', 'major_version', 'minor_version',
-    'patch_version', 'pre_release_version', 'maker', 'node_id', 'address', 'port',
-    'telemetry_timestamp', 'timestamp'
+    'account',
+    'weight',
+    'block_count',
+    'block_behind',
+    'cemented_count',
+    'cemented_behind',
+    'account_count',
+    'unchecked_count',
+    'bandwidth_cap',
+    'peer_count',
+    'protocol_version',
+    'uptime',
+    'major_version',
+    'minor_version',
+    'patch_version',
+    'pre_release_version',
+    'maker',
+    'node_id',
+    'address',
+    'port',
+    'telemetry_timestamp',
+    'timestamp'
   ],
   representatives_network: [
-    'account', 'address', 'continent', 'country', 'countryCode', 'region',
-    'regionName', 'city', 'zip', 'lat', 'lon', 'timezone', 'isp', 'org', 'as',
-    'asname', 'hosted', 'timestamp'
+    'account',
+    'address',
+    'continent',
+    'country',
+    'countryCode',
+    'region',
+    'regionName',
+    'city',
+    'zip',
+    'lat',
+    'lon',
+    'timezone',
+    'isp',
+    'org',
+    'as',
+    'asname',
+    'hosted',
+    'timestamp'
   ],
   representatives_network_index: [
-    'account', 'address', 'continent', 'country', 'countryCode', 'region',
-    'regionName', 'city', 'zip', 'lat', 'lon', 'timezone', 'isp', 'org', 'as',
-    'asname', 'hosted', 'timestamp'
+    'account',
+    'address',
+    'continent',
+    'country',
+    'countryCode',
+    'region',
+    'regionName',
+    'city',
+    'zip',
+    'lat',
+    'lon',
+    'timezone',
+    'isp',
+    'org',
+    'as',
+    'asname',
+    'hosted',
+    'timestamp'
   ],
   representatives_uptime: ['account', 'online', 'timestamp'],
   representatives_uptime_index: ['account', 'online', 'timestamp'],
-  representatives_uptime_summary: ['account', 'days', 'online_count', 'offline_count'],
+  representatives_uptime_summary: [
+    'account',
+    'days',
+    'online_count',
+    'offline_count'
+  ],
   representatives_uptime_rollup_hour: ['account', 'online', 'interval'],
   representatives_uptime_rollup_day: [
-    'account', 'online_count', 'offline_count', 'longest_downtime', 'timestamp'
+    'account',
+    'online_count',
+    'offline_count',
+    'longest_downtime',
+    'timestamp'
   ],
-  sources: ['id', 'title', 'logo_url', 'score_avg', 'social_score_avg', 'created_at', 'updated_at'],
+  sources: [
+    'id',
+    'title',
+    'logo_url',
+    'score_avg',
+    'social_score_avg',
+    'created_at',
+    'updated_at'
+  ],
   users: ['id', 'username', 'public_key', 'signature', 'last_visit'],
   voting_weight: [
-    'address', 'quorum_delta', 'online_weight_quorum_percent', 'online_weight_minimum',
-    'online_stake_total', 'trended_stake_total', 'peers_stake_total', 'timestamp'
+    'address',
+    'quorum_delta',
+    'online_weight_quorum_percent',
+    'online_weight_minimum',
+    'online_stake_total',
+    'trended_stake_total',
+    'peers_stake_total',
+    'timestamp'
   ]
 }
 
@@ -246,7 +458,7 @@ async function runTable(table, mysqlConn, pgClient, opts) {
           const elapsed = (Date.now() - t0) / 1000
           logger(
             `${table}: ${rowsRead.toLocaleString()} rows streamed ` +
-            `@ ${Math.round(rowsRead / elapsed).toLocaleString()} rows/s`
+              `@ ${Math.round(rowsRead / elapsed).toLocaleString()} rows/s`
           )
           lastLogged = rowsRead
         }
@@ -255,19 +467,29 @@ async function runTable(table, mysqlConn, pgClient, opts) {
     })
 
     await pipeline(mysqlStream, transform, copyStream)
-    logger(`${table}: COPY done -- ${rowsRead.toLocaleString()} rows into _stage in ${Date.now() - t0}ms`)
+    logger(
+      `${table}: COPY done -- ${rowsRead.toLocaleString()} rows into _stage in ${Date.now() - t0}ms`
+    )
 
-    const { rows: extractedRows } = await pgClient.query('SELECT count(*)::bigint AS c FROM _stage')
+    const { rows: extractedRows } = await pgClient.query(
+      'SELECT count(*)::bigint AS c FROM _stage'
+    )
     rowsExtracted = Number(extractedRows[0].c)
 
     if (opts.dryRun) {
-      logger(`${table}: --dry-run -- ROLLBACK (skip INSERT into public."${table}")`)
+      logger(
+        `${table}: --dry-run -- ROLLBACK (skip INSERT into public."${table}")`
+      )
       await pgClient.query('ROLLBACK')
       committed = true
     } else {
-      const before = await pgClient.query(`SELECT count(*)::bigint AS c FROM public."${table}"`)
+      const before = await pgClient.query(
+        `SELECT count(*)::bigint AS c FROM public."${table}"`
+      )
       liveBefore = Number(before.rows[0].c)
-      logger(`${table}: INSERT _stage -> public."${table}" (live_before=${liveBefore.toLocaleString()})`)
+      logger(
+        `${table}: INSERT _stage -> public."${table}" (live_before=${liveBefore.toLocaleString()})`
+      )
 
       // representatives_uptime_index: PG schema tightens UNIQUE to (account)
       // alone. MySQL had UNIQUE(account, online) and may contain two rows
@@ -288,7 +510,9 @@ async function runTable(table, mysqlConn, pgClient, opts) {
         )
       }
 
-      const after = await pgClient.query(`SELECT count(*)::bigint AS c FROM public."${table}"`)
+      const after = await pgClient.query(
+        `SELECT count(*)::bigint AS c FROM public."${table}"`
+      )
       liveAfter = Number(after.rows[0].c)
       rowsInserted = liveAfter - liveBefore
 
@@ -307,7 +531,9 @@ async function runTable(table, mysqlConn, pgClient, opts) {
                notes = $4
          WHERE table_name = $1`,
         [
-          table, rowsExtracted, rowsInserted,
+          table,
+          rowsExtracted,
+          rowsInserted,
           `live_before=${liveBefore} live_after=${liveAfter}`
         ]
       )
@@ -316,7 +542,11 @@ async function runTable(table, mysqlConn, pgClient, opts) {
     }
   } catch (err) {
     if (!committed) {
-      try { await pgClient.query('ROLLBACK') } catch { /* ignore */ }
+      try {
+        await pgClient.query('ROLLBACK')
+      } catch {
+        /* ignore */
+      }
     }
     throw err
   }
@@ -325,9 +555,9 @@ async function runTable(table, mysqlConn, pgClient, opts) {
   const rate = Math.round(rowsExtracted / (tookMs / 1000)) || 0
   logger(
     `${table}: extracted=${rowsExtracted.toLocaleString()} ` +
-    `inserted=${rowsInserted.toLocaleString()} ` +
-    `live_before=${liveBefore.toLocaleString()} live_after=${liveAfter.toLocaleString()} ` +
-    `took=${tookMs}ms rate=${rate.toLocaleString()}rows/s`
+      `inserted=${rowsInserted.toLocaleString()} ` +
+      `live_before=${liveBefore.toLocaleString()} live_after=${liveAfter.toLocaleString()} ` +
+      `took=${tookMs}ms rate=${rate.toLocaleString()}rows/s`
   )
 
   return {
@@ -358,11 +588,14 @@ async function main() {
     order = [opts.onlyTable]
   } else if (opts.resumeFrom) {
     const i = RUN_ORDER.indexOf(opts.resumeFrom)
-    if (i < 0) throw new Error(`--resume-from=${opts.resumeFrom} is not in RUN_ORDER`)
+    if (i < 0)
+      throw new Error(`--resume-from=${opts.resumeFrom} is not in RUN_ORDER`)
     order = RUN_ORDER.slice(i)
   }
 
-  logger(`vps-to-postgres starting: order=[${order.join(', ')}] dry_run=${opts.dryRun}`)
+  logger(
+    `vps-to-postgres starting: order=[${order.join(', ')}] dry_run=${opts.dryRun}`
+  )
   const tStart = Date.now()
 
   const mysqlConn = await openMysqlReader()
@@ -381,18 +614,28 @@ async function main() {
       }
     }
   } finally {
-    try { await pgClient.end() } catch { /* ignore */ }
-    try { await mysqlConn.end() } catch { /* ignore */ }
+    try {
+      await pgClient.end()
+    } catch {
+      /* ignore */
+    }
+    try {
+      await mysqlConn.end()
+    } catch {
+      /* ignore */
+    }
   }
 
   const tookMs = Date.now() - tStart
-  logger(`vps-to-postgres done in ${tookMs}ms (nul_strip_count=${_nul_strip_count})`)
+  logger(
+    `vps-to-postgres done in ${tookMs}ms (nul_strip_count=${_nul_strip_count})`
+  )
   for (const s of summaries) {
     logger(
       `  ${s.table}: extracted=${s.rows_extracted.toLocaleString()} ` +
-      `inserted=${s.rows_inserted.toLocaleString()} took=${s.took_ms}ms ` +
-      `rate=${s.rate_rows_per_s.toLocaleString()}rows/s` +
-      (s.dry_run ? ' [dry-run]' : '')
+        `inserted=${s.rows_inserted.toLocaleString()} took=${s.took_ms}ms ` +
+        `rate=${s.rate_rows_per_s.toLocaleString()}rows/s` +
+        (s.dry_run ? ' [dry-run]' : '')
     )
   }
 

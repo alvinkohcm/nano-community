@@ -51,18 +51,53 @@ const RUN_ORDER = [
 const TABLE_COLUMNS = {
   representatives_uptime: ['account', 'online', 'timestamp'],
   representatives_telemetry: [
-    'account', 'weight', 'block_count', 'block_behind', 'cemented_count',
-    'cemented_behind', 'account_count', 'unchecked_count', 'bandwidth_cap',
-    'peer_count', 'protocol_version', 'uptime', 'major_version',
-    'minor_version', 'patch_version', 'pre_release_version', 'maker',
-    'node_id', 'address', 'port', 'telemetry_timestamp', 'timestamp'
+    'account',
+    'weight',
+    'block_count',
+    'block_behind',
+    'cemented_count',
+    'cemented_behind',
+    'account_count',
+    'unchecked_count',
+    'bandwidth_cap',
+    'peer_count',
+    'protocol_version',
+    'uptime',
+    'major_version',
+    'minor_version',
+    'patch_version',
+    'pre_release_version',
+    'maker',
+    'node_id',
+    'address',
+    'port',
+    'telemetry_timestamp',
+    'timestamp'
   ],
   accounts_meta: [
-    'account', 'balance', 'block_count', 'weight', 'delegators', 'timestamp'
+    'account',
+    'balance',
+    'block_count',
+    'weight',
+    'delegators',
+    'timestamp'
   ],
   posts: [
-    'id', 'pid', 'sid', 'title', 'url', 'content_url', 'author', 'authorid',
-    'text', 'html', 'summary', 'score', 'social_score', 'created_at', 'updated_at'
+    'id',
+    'pid',
+    'sid',
+    'title',
+    'url',
+    'content_url',
+    'author',
+    'authorid',
+    'text',
+    'html',
+    'summary',
+    'score',
+    'social_score',
+    'created_at',
+    'updated_at'
   ]
 }
 
@@ -192,7 +227,7 @@ async function runTable(table, mysqlConn, pgClient, opts) {
           const elapsed = (Date.now() - t0) / 1000
           logger(
             `${table}: ${rowsRead.toLocaleString()} rows streamed ` +
-            `@ ${Math.round(rowsRead / elapsed).toLocaleString()} rows/s`
+              `@ ${Math.round(rowsRead / elapsed).toLocaleString()} rows/s`
           )
           lastLogged = rowsRead
         }
@@ -202,25 +237,37 @@ async function runTable(table, mysqlConn, pgClient, opts) {
 
     await pipeline(mysqlStream, transform, copyStream)
     const tCopy = Date.now() - t0
-    logger(`${table}: COPY done -- ${rowsRead.toLocaleString()} rows into _stage in ${tCopy}ms`)
+    logger(
+      `${table}: COPY done -- ${rowsRead.toLocaleString()} rows into _stage in ${tCopy}ms`
+    )
 
-    const { rows: extractedRows } = await pgClient.query('SELECT count(*)::bigint AS c FROM _stage')
+    const { rows: extractedRows } = await pgClient.query(
+      'SELECT count(*)::bigint AS c FROM _stage'
+    )
     rowsExtracted = Number(extractedRows[0].c)
 
     if (opts.dryRun) {
-      logger(`${table}: --dry-run -- ROLLBACK (skip INSERT into public."${table}")`)
+      logger(
+        `${table}: --dry-run -- ROLLBACK (skip INSERT into public."${table}")`
+      )
       await pgClient.query('ROLLBACK')
       committed = true
     } else {
-      const before = await pgClient.query(`SELECT count(*)::bigint AS c FROM public."${table}"`)
+      const before = await pgClient.query(
+        `SELECT count(*)::bigint AS c FROM public."${table}"`
+      )
       liveBefore = Number(before.rows[0].c)
-      logger(`${table}: INSERT _stage -> public."${table}" (live_before=${liveBefore.toLocaleString()})`)
+      logger(
+        `${table}: INSERT _stage -> public."${table}" (live_before=${liveBefore.toLocaleString()})`
+      )
       await pgClient.query(
         `INSERT INTO public."${table}" (${pgColList})
          SELECT ${pgColList} FROM _stage
          ON CONFLICT DO NOTHING`
       )
-      const after = await pgClient.query(`SELECT count(*)::bigint AS c FROM public."${table}"`)
+      const after = await pgClient.query(
+        `SELECT count(*)::bigint AS c FROM public."${table}"`
+      )
       liveAfter = Number(after.rows[0].c)
       rowsInserted = liveAfter - liveBefore
 
@@ -241,7 +288,11 @@ async function runTable(table, mysqlConn, pgClient, opts) {
     }
   } catch (err) {
     if (!committed) {
-      try { await pgClient.query('ROLLBACK') } catch { /* ignore */ }
+      try {
+        await pgClient.query('ROLLBACK')
+      } catch {
+        /* ignore */
+      }
     }
     throw err
   }
@@ -250,9 +301,9 @@ async function runTable(table, mysqlConn, pgClient, opts) {
   const rate = Math.round(rowsExtracted / (tookMs / 1000))
   logger(
     `${table}: extracted=${rowsExtracted.toLocaleString()} ` +
-    `inserted=${rowsInserted.toLocaleString()} ` +
-    `live_before=${liveBefore.toLocaleString()} live_after=${liveAfter.toLocaleString()} ` +
-    `took=${tookMs}ms rate=${rate.toLocaleString()}rows/s`
+      `inserted=${rowsInserted.toLocaleString()} ` +
+      `live_before=${liveBefore.toLocaleString()} live_after=${liveAfter.toLocaleString()} ` +
+      `took=${tookMs}ms rate=${rate.toLocaleString()}rows/s`
   )
 
   return {
@@ -277,7 +328,8 @@ async function runTableDelta(table, vpsPg, pgClient, opts) {
   // Bootstrap watermark if NULL.
   let watermark
   const sw = await pgClient.query(
-    'SELECT last_max_ts FROM public.etl_state WHERE table_name = $1', [table]
+    'SELECT last_max_ts FROM public.etl_state WHERE table_name = $1',
+    [table]
   )
   if (sw.rowCount === 0 || sw.rows[0].last_max_ts == null) {
     const r = await pgClient.query(
@@ -290,7 +342,9 @@ async function runTableDelta(table, vpsPg, pgClient, opts) {
        ON CONFLICT (table_name) DO UPDATE SET last_max_ts = EXCLUDED.last_max_ts`,
       [table, watermark]
     )
-    logger(`${table}: bootstrapped watermark from PG MAX(${timeCol}) = ${watermark}`)
+    logger(
+      `${table}: bootstrapped watermark from PG MAX(${timeCol}) = ${watermark}`
+    )
   } else {
     watermark = Number(sw.rows[0].last_max_ts)
     logger(`${table}: resumed watermark = ${watermark}`)
@@ -306,14 +360,18 @@ async function runTableDelta(table, vpsPg, pgClient, opts) {
   await pgClient.query('BEGIN')
   let committed = false
   try {
-    await pgClient.query('SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0')
+    await pgClient.query(
+      'SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction TO 0'
+    )
     await pgClient.query(
       `CREATE TEMP TABLE _stage (LIKE public."${table}" INCLUDING DEFAULTS) ON COMMIT DROP`
     )
 
-    const copyStream = pgClient.query(pgCopyStreams.from(
-      `COPY _stage (${pgColList}) FROM STDIN WITH (FORMAT text)`
-    ))
+    const copyStream = pgClient.query(
+      pgCopyStreams.from(
+        `COPY _stage (${pgColList}) FROM STDIN WITH (FORMAT text)`
+      )
+    )
 
     // Source read from VPS PG. Delta size is bounded by the watermark
     // gap (typically minutes-to-hours of accumulation between cron ticks),
@@ -339,7 +397,9 @@ async function runTableDelta(table, vpsPg, pgClient, opts) {
         rowsRead++
         if (rowsRead - lastLogged >= 500_000) {
           const elapsed = (Date.now() - t0) / 1000
-          logger(`${table}: delta ${rowsRead.toLocaleString()} rows streamed @ ${Math.round(rowsRead / elapsed).toLocaleString()} rows/s`)
+          logger(
+            `${table}: delta ${rowsRead.toLocaleString()} rows streamed @ ${Math.round(rowsRead / elapsed).toLocaleString()} rows/s`
+          )
           lastLogged = rowsRead
         }
         cb(null, rowToTsv(row, cols))
@@ -347,21 +407,27 @@ async function runTableDelta(table, vpsPg, pgClient, opts) {
     })
 
     await pipeline(sourceStream, transform, copyStream)
-    logger(`${table}: delta COPY done -- ${rowsRead.toLocaleString()} rows into _stage in ${Date.now() - t0}ms`)
+    logger(
+      `${table}: delta COPY done -- ${rowsRead.toLocaleString()} rows into _stage in ${Date.now() - t0}ms`
+    )
 
     if (opts.dryRun) {
       logger(`${table}: --dry-run -- ROLLBACK`)
       await pgClient.query('ROLLBACK')
       committed = true
     } else {
-      const before = await pgClient.query(`SELECT count(*)::bigint AS c FROM public."${table}"`)
+      const before = await pgClient.query(
+        `SELECT count(*)::bigint AS c FROM public."${table}"`
+      )
       liveBefore = Number(before.rows[0].c)
       await pgClient.query(
         `INSERT INTO public."${table}" (${pgColList})
          SELECT ${pgColList} FROM _stage
          ON CONFLICT DO NOTHING`
       )
-      const after = await pgClient.query(`SELECT count(*)::bigint AS c FROM public."${table}"`)
+      const after = await pgClient.query(
+        `SELECT count(*)::bigint AS c FROM public."${table}"`
+      )
       liveAfter = Number(after.rows[0].c)
       rowsInserted = liveAfter - liveBefore
       await pgClient.query(
@@ -372,15 +438,24 @@ async function runTableDelta(table, vpsPg, pgClient, opts) {
                completed_at = NOW(),
                notes = $5
          WHERE table_name = $1`,
-        [table, runningMax, rowsRead, rowsInserted,
-         `delta live_before=${liveBefore} live_after=${liveAfter}`]
+        [
+          table,
+          runningMax,
+          rowsRead,
+          rowsInserted,
+          `delta live_before=${liveBefore} live_after=${liveAfter}`
+        ]
       )
       await pgClient.query('COMMIT')
       committed = true
     }
   } catch (err) {
     if (!committed) {
-      try { await pgClient.query('ROLLBACK') } catch { /* ignore */ }
+      try {
+        await pgClient.query('ROLLBACK')
+      } catch {
+        /* ignore */
+      }
     }
     throw err
   }
@@ -392,9 +467,9 @@ async function runTableDelta(table, vpsPg, pgClient, opts) {
   const tookMs = Date.now() - t0
   logger(
     `${table}: DELTA extracted=${rowsRead.toLocaleString()} inserted=${rowsInserted.toLocaleString()} ` +
-    `live_before=${liveBefore.toLocaleString()} live_after=${liveAfter.toLocaleString()} ` +
-    `watermark=${runningMax} took=${tookMs}ms` +
-    (opts.dryRun ? ' [dry-run]' : '')
+      `live_before=${liveBefore.toLocaleString()} live_after=${liveAfter.toLocaleString()} ` +
+      `watermark=${runningMax} took=${tookMs}ms` +
+      (opts.dryRun ? ' [dry-run]' : '')
   )
 
   return {
@@ -422,18 +497,23 @@ async function main() {
   let order = baseOrder.slice()
   if (opts.onlyTable) {
     if (!baseOrder.includes(opts.onlyTable)) {
-      throw new Error(`--only-table=${opts.onlyTable} is not in ${opts.delta ? 'DELTA_RUN_ORDER' : 'RUN_ORDER'}`)
+      throw new Error(
+        `--only-table=${opts.onlyTable} is not in ${opts.delta ? 'DELTA_RUN_ORDER' : 'RUN_ORDER'}`
+      )
     }
     order = [opts.onlyTable]
   } else if (opts.resumeFrom) {
     const i = baseOrder.indexOf(opts.resumeFrom)
-    if (i < 0) throw new Error(`--resume-from=${opts.resumeFrom} is not in ${opts.delta ? 'DELTA_RUN_ORDER' : 'RUN_ORDER'}`)
+    if (i < 0)
+      throw new Error(
+        `--resume-from=${opts.resumeFrom} is not in ${opts.delta ? 'DELTA_RUN_ORDER' : 'RUN_ORDER'}`
+      )
     order = baseOrder.slice(i)
   }
 
   logger(
     `archive-to-postgres starting: mode=${opts.delta ? 'delta' : 'bulk'} order=[${order.join(', ')}] ` +
-    `dry_run=${opts.dryRun} (lockfile=${LOCKFILE}, expected to be held by wrapper flock -n)`
+      `dry_run=${opts.dryRun} (lockfile=${LOCKFILE}, expected to be held by wrapper flock -n)`
   )
   const tStart = Date.now()
 
@@ -460,27 +540,45 @@ async function main() {
       }
     }
   } finally {
-    try { await pgClient.end() } catch { /* ignore */ }
-    if (vpsPg) { try { await vpsPg.end() } catch { /* ignore */ } }
-    if (mysqlConn) { try { await mysqlConn.end() } catch { /* ignore */ } }
+    try {
+      await pgClient.end()
+    } catch {
+      /* ignore */
+    }
+    if (vpsPg) {
+      try {
+        await vpsPg.end()
+      } catch {
+        /* ignore */
+      }
+    }
+    if (mysqlConn) {
+      try {
+        await mysqlConn.end()
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   const tookMs = Date.now() - tStart
-  logger(`archive-to-postgres done in ${tookMs}ms (nul_strip_count=${_nul_strip_count})`)
+  logger(
+    `archive-to-postgres done in ${tookMs}ms (nul_strip_count=${_nul_strip_count})`
+  )
   for (const s of summaries) {
     if (s.watermark_after !== undefined) {
       logger(
         `  ${s.table}: extracted=${s.rows_extracted.toLocaleString()} ` +
-        `inserted=${s.rows_inserted.toLocaleString()} ` +
-        `watermark=${s.watermark_after} took=${s.took_ms}ms` +
-        (s.dry_run ? ' [dry-run]' : '')
+          `inserted=${s.rows_inserted.toLocaleString()} ` +
+          `watermark=${s.watermark_after} took=${s.took_ms}ms` +
+          (s.dry_run ? ' [dry-run]' : '')
       )
     } else {
       logger(
         `  ${s.table}: extracted=${s.rows_extracted.toLocaleString()} ` +
-        `inserted=${s.rows_inserted.toLocaleString()} took=${s.took_ms}ms ` +
-        `rate=${s.rate_rows_per_s.toLocaleString()}rows/s` +
-        (s.dry_run ? ' [dry-run]' : '')
+          `inserted=${s.rows_inserted.toLocaleString()} took=${s.took_ms}ms ` +
+          `rate=${s.rate_rows_per_s.toLocaleString()}rows/s` +
+          (s.dry_run ? ' [dry-run]' : '')
       )
     }
   }
