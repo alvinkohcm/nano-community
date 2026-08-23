@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import debug from 'debug'
 
-import { request, isMain } from '#common'
+import { request, isMain, wait } from '#common'
 import report_job from '#libs-server/report-job.mjs'
 import db from '#db'
 
@@ -121,12 +121,53 @@ const format = (item) => {
   }
 }
 
-const importGithubEvents = async () => {
-  const url = 'https://api.github.com/repos/nanocurrency/nano-node/events'
+// GitHub intermittently answers the events endpoint with a transient HTML edge
+// page (non-2xx, non-JSON) while the rest of the API stays healthy. Absorb a
+// sub-minute hiccup with a bounded backoff so an interstitial stops being a
+// hard pipeline_failure with an opaque error; a sustained outage still throws
+// once the retries are exhausted.
+const EVENTS_RETRY_BACKOFF_MS = [3000, 10000, 30000]
 
+const isTransient = (err) => {
+  const status = err.status || (err.response && err.response.status)
+  return (
+    err.nonJson === true ||
+    !status ||
+    status === 429 ||
+    status >= 500 ||
+    /ECONNRESET|ETIMEDOUT|ENOTFOUND|EPIPE|socket hang up/i.test(
+      err.message || ''
+    )
+  )
+}
+
+const fetchEvents = async () => {
+  const url = 'https://api.github.com/repos/nanocurrency/nano-node/events'
+  let lastError
+  for (let attempt = 0; attempt <= EVENTS_RETRY_BACKOFF_MS.length; attempt++) {
+    if (attempt > 0) {
+      const delay = EVENTS_RETRY_BACKOFF_MS[attempt - 1]
+      logger(
+        `github events request failed (${lastError.message}); retry ${attempt}/${EVENTS_RETRY_BACKOFF_MS.length} in ${delay}ms`
+      )
+      await wait(delay)
+    }
+    try {
+      return await request({ url })
+    } catch (err) {
+      lastError = err
+      if (!isTransient(err)) {
+        throw err
+      }
+    }
+  }
+  throw lastError
+}
+
+const importGithubEvents = async () => {
   // Do not swallow: a failed fetch is fatal — let it propagate so main() reports
   // the run as a failure instead of returning early as a success.
-  const res = await request({ url })
+  const res = await fetchEvents()
 
   if (!res) {
     return
