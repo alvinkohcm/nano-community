@@ -47,10 +47,19 @@ jobs:
           yarn install --immutable
           cd ..
 
-      - name: yarn lint
+      # THE HERMETIC SET, and the ONE definition of it. `yarn verify` is
+      # `yarn lint` -- everything in this workflow that runs without the
+      # timescaledb service above. The pre-push gate
+      # (user:cli/lib/pre-push-guard-local-verify.sh) runs THIS SAME script
+      # against the outgoing SHA in a persistent worktree, so CI and the gate
+      # cannot drift. Measured 2026-08-30: 4s.
+      #
+      # `yarn test` stays out of it: the suite needs the database this job
+      # provisions, so it is CI-only.
+      - name: Verify (hermetic checks)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: yarn lint
+        run: yarn verify
 
       - name: yarn test
         env:

@@ -18,6 +18,7 @@
     "deploy": "scp -r build/* nano.community:/root/nano-community/source/build",
     "build": "cross-env NODE_ENV=production webpack --config webpack/webpack.prod.babel.mjs --color --progress && react-snap",
     "lint": "eslint . --ext js,mjs",
+    "verify": "yarn lint",
     "prettier": "prettier --write .",
     "test": "NODE_OPTIONS=--disable-warning=DEP0040 TZ=America/New_York NODE_ENV=test TEST=all mocha --require polyfills/node25-slow-buffer.cjs --exit",
     "scan:links": "npx linkinator https://nano.community --recurse --timeout 10000",
